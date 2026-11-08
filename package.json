@@ -44,15 +44,13 @@
         "zip"
       ],
       "icon": "build/icon.png",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "artifactName": "QBizPro-Studio-${version}-win-x64-portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "QBizPro-Studio-Setup-${version}.${ext}"
-    },
-    "zip": {
-      "artifactName": "QBizPro-Studio-${version}-win-x64-portable.${ext}"
     }
   },
   "repository": {
