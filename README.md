@@ -68,7 +68,7 @@ Logo brand diunggah sendiri sebagai PNG atau SVG. Sebelum ada logo, nama brand d
 - **Gambar:** satu frame bisa diekspor ke PNG atau JPG.
 
 ## Cara memakai (pengguna)
-1. Unduh installer dari halaman **Releases** repo ini: `QBizPro-Studio-Setup-x.y.z.exe` untuk instal, atau file `.zip` untuk versi portable.
+1. Unduh dari tab **Actions → Build Windows → run terbaru → Artifacts**, atau dari **Releases** bila sudah ada tag versi. Pilih `QBizPro-Studio-Setup-x.y.z.exe` untuk instal, atau `...-portable.zip` untuk versi tanpa instal.
 2. Jalankan aplikasinya. Data disimpan di `Documents\QBizPro Studio`. Lokasi ini bisa diganti di Pengaturan.
 
 ## Pengembangan

@@ -50,6 +50,13 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "QBizPro-Studio-Setup-${version}.${ext}"
+    },
+    "zip": {
+      "artifactName": "QBizPro-Studio-${version}-win-x64-portable.${ext}"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jirengrey-silver/pembukaan-konten-aqubizpro.git"
   }
 }
