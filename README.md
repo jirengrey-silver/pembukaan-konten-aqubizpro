@@ -40,7 +40,33 @@ Aplikasi desktop Windows untuk membuat video konten media sosial produk IT: intr
   - Menu klik kanan, zoom timeline, dan trek audio.
 - **Lain-lain:** Undo/redo, simpan (`Ctrl+S`), dan simpan otomatis tiap 2 detik setelah ada perubahan.
 
-### Brand Roulette Intro
+### QBizPro Cinematic Brand Roulette (modul utama)
+Storyboard 6 scene, total 12 detik, menjadi template bawaan proyek baru (60 fps):
+
+| # | Scene | Waktu |
+|---|---|---|
+| 1 | Logo Reveal | 0–2 dtk |
+| 2 | Orbit Activation | 2–4 dtk |
+| 3 | Brand Roulette | 4–7 dtk |
+| 4 | Brand Selection | 7–9 dtk |
+| 5 | Brand Zoom In | 9–11 dtk |
+| 6 | Product Review Transition | 11–12 dtk |
+
+- **Logo QBizPro selalu di pusat orbit.** Ukuran bawaannya 10% dari sisi panjang layar dan bisa diubah.
+- **Logo brand mengorbit dalam 3D:** ukuran dan kecerahan mengikuti kedalaman, motion blur muncul saat cepat, garis orbit di depan dan di belakang logo.
+- **Putaran roulette:** easing khusus yang halus saat mulai dan saat berhenti.
+  - Sudut putaran dihitung supaya brand terpilih selalu berhenti tepat di titik fokus, baik dipilih manual maupun acak.
+  - Ini diuji otomatis pada 104 variasi.
+- **Zoom ke product showcase tanpa potongan:** kartu brand terpilih berubah bentuk menjadi header halaman review.
+- **Keyframe yang bisa diedit:**
+  - 20 properti dianimasikan dengan keyframe: kamera (zoom, fokus, geser, rotasi), logo (opasitas, skala, putar 3D, cahaya), orbit (garis, radius, kemiringan, kemunculan brand, opasitas), progres putaran, efek (lens flare, sorot, sinar, kilatan), dan transisi showcase.
+  - Di timeline: seret ◆ untuk menggeser, klik dua kali di track untuk menambah, Delete untuk menghapus.
+  - Di panel Properti: ubah nilai di posisi playhead, atur easing, atau pindahkan key ke scene lain.
+  - Keyframe disimpan relatif terhadap scene-nya, jadi ikut bergeser saat durasi scene diubah.
+- **Logo selalu berupa gambar asli yang diunggah.** Brand tanpa logo tampil sebagai kotak kosong bergaris, dan aplikasi memberi peringatan sebelum ekspor.
+- Logo contoh di `tests/fixtures/logos` adalah logo fiktif untuk uji dan pratinjau.
+
+### Brand Roulette Intro (kotak misteri)
 Animasi pembuka 8 tahap:
 1. Cahaya pembuka
 2. Garis orbit emas dan biru

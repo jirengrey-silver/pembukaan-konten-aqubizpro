@@ -221,3 +221,11 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line2);
 .brow .lg { width: 34px; height: 34px; border-radius: 7px; background: #fff center/contain no-repeat; border: 1px solid var(--line2); display: grid; place-items: center; font-size: 9px; color: #0A1631; font-weight: 700; overflow: hidden; }
 .brow input[type="text"] { padding: 4px 6px; }
 .brow.off { opacity: .45; }
+
+/* keyframes */
+.kf { position: absolute; top: 4px; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: ew-resize; display: grid; place-items: center; z-index: 2; }
+.kf:hover svg path { fill: #FFD36B; }
+.kf[aria-pressed="true"] svg { filter: drop-shadow(0 0 3px #fff); }
+.kf[aria-pressed="true"] svg path { fill: #fff; stroke: #fff; }
+.tl-name button[aria-pressed="true"] { color: var(--gold); }
+.warnbox { border: 1px solid rgba(245, 181, 71, .5); background: rgba(245, 181, 71, .08); border-radius: 9px; padding: 8px 10px; font-size: 12px; color: var(--warn); }

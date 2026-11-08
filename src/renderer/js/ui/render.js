@@ -1,18 +1,21 @@
 // Rendering helpers used by the editor, thumbnails and export.
 import { renderFrame, projectDuration } from '../engine/scene.js';
 import { stageTimes } from '../engine/roulette.js';
+import { cineAssetIds, cineSceneTimes } from '../engine/cinematic.js';
 import { img, preload, customFonts } from './dom.js';
 
 export function projectAssetIds(p) {
   const ids = []; if (p.background && p.background.assetId) ids.push(p.background.assetId);
   for (const l of p.layers) {
     if (l.assetId) ids.push(l.assetId);
+    if (l.type === 'cinematic') ids.push(...cineAssetIds(l.params));
     if (l.type === 'roulette') { const q = l.params; ids.push(q.centerAssetId, q.review && q.review.productAssetId, ...q.brands.map(b => b.assetId)); }
   }
   return ids.filter(Boolean);
 }
 export function draw(ctx, p, t, scale = 1) { ctx.setTransform(scale, 0, 0, scale, 0, 0); renderFrame(ctx, p, t, img, customFonts()); ctx.setTransform(1, 0, 0, 1, 0, 0); }
 export function posterTime(p) {
+  const c = p.layers.find(l => l.type === 'cinematic' && !l.hidden); if (c) { const S = cineSceneTimes(c.params); return c.start + S.select.a + S.select.d * 0.7; }
   const r = p.layers.find(l => l.type === 'roulette' && !l.hidden);
   if (r) { const S = stageTimes(r.params); return r.start + S.spinDur.a + S.spinDur.d * 0.55; }
   return Math.min(projectDuration(p) * 0.4, 3);

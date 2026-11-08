@@ -5,8 +5,10 @@ import { projectDuration, LAYER_TYPES } from '../engine/scene.js';
 import { STAGES, stageTimes } from '../engine/roulette.js';
 import { clamp } from '../engine/util.js';
 import { removeLayer, duplicateLayer } from './panels.js';
+import { sceneSegments, keyframeRows } from './keyframes.js';
+import { FULLFRAME } from '../engine/scene.js';
 
-const COLORS = { roulette: '#F2A93B', text: '#1E9BFF', image: '#3DDC97', logo: '#B78BFF', shape: '#93A4C3', audio: '#FF9FB0' };
+const COLORS = { cinematic: '#F2A93B', roulette: '#F2A93B', text: '#1E9BFF', image: '#3DDC97', logo: '#B78BFF', shape: '#93A4C3', audio: '#FF9FB0' };
 const SEGC = ['#F2A93B', '#FFC56B', '#F57C1F', '#FFD24D', '#FFB04D', '#FFD88F', '#F29A3B', '#FFC56B', '#FFE3AE'];
 let R = null; // current DOM refs
 
@@ -19,7 +21,7 @@ export function buildTimeline(el, api) {
     h('button', { class: 'btn ghost icon sm', 'aria-label': 'Perkecil timeline', title: 'Perkecil', onclick: () => zoom(s.pxPerSec / 1.3, api) }, icon('zoomout')),
     h('button', { class: 'btn ghost icon sm', 'aria-label': 'Perbesar timeline', title: 'Perbesar', onclick: () => zoom(s.pxPerSec * 1.3, api) }, icon('zoomin')),
     h('button', { class: 'btn ghost sm', onclick: () => { const w = R.scroll.clientWidth - 20; zoom(w / (dur + 0.5), api); } }, 'Pas'),
-    h('span', { class: 'hint', style: { marginLeft: '8px' } }, 'Seret blok untuk memindah, tepi blok untuk memotong. Klik kanan untuk menu. Keyframe menyusul di Fase 2.'));
+    h('span', { class: 'hint', style: { marginLeft: '8px' } }, 'Seret blok untuk memindah, tepi blok untuk memotong. Klik kanan untuk menu. Layer cinematic: seret ◆ untuk menggeser keyframe, klik dua kali di track untuk menambah.'));
   const names = h('div', { class: 'tl-names' }, h('div', { class: 'tl-head' }, 'Layer'));
   const ruler = h('div', { class: 'tl-ruler', style: { width: width + 'px' } });
   const stepS = pps > 120 ? 0.5 : pps > 50 ? 1 : pps > 20 ? 2 : 5;
@@ -31,18 +33,21 @@ export function buildTimeline(el, api) {
   const L = p.layers.slice().reverse();
   for (const l of L) {
     names.append(h('div', { class: 'tl-name', 'aria-selected': String(s.sel === l.id), onclick: () => api.select(l.id), title: l.name }, h('span', { class: 'kind', style: { background: COLORS[l.type] } }), h('span', { class: 'nm', style: { opacity: l.hidden ? 0.45 : 1 } }, l.name || LAYER_TYPES[l.type]),
+      l.type === 'cinematic' ? h('button', { 'aria-label': 'Tampilkan atau sembunyikan track keyframe', title: 'Track keyframe', 'aria-pressed': String(s.sel === l.id && s.kfOpen !== false), onclick: e => { e.stopPropagation(); if (s.sel !== l.id) { s.kfOpen = true; api.select(l.id); } else { s.kfOpen = s.kfOpen === false; buildTimeline(el, api); } } }, '◆') : null,
       h('button', { 'aria-label': l.hidden ? 'Tampilkan' : 'Sembunyikan', onclick: e => { e.stopPropagation(); snap(); l.hidden = !l.hidden; changed('canvas tl left'); } }, icon(l.hidden ? 'eyeoff' : 'eye'))));
     const row = h('div', { class: 'tl-row' });
     const clip = h('div', { class: 'clip', 'aria-selected': String(s.sel === l.id), role: 'button', tabindex: '0', 'aria-label': `${l.name} ${fmtTime(l.start)} sampai ${fmtTime(l.end)}`, style: { left: l.start * pps + 'px', width: Math.max(6, (l.end - l.start) * pps) + 'px', background: COLORS[l.type], opacity: l.hidden ? 0.4 : 1 } });
-    if (l.type === 'roulette') { const S = stageTimes(l.params); STAGES.forEach(([k, lab], i) => clip.append(h('div', { class: 'seg', title: `${lab} · ${S[k].d.toFixed(1)} dtk`, style: { left: S[k].a * pps + 'px', width: S[k].d * pps + 'px', background: SEGC[i] + '55' } }))); clip.append(h('span', { style: { position: 'relative' } }, l.name)); }
+    if (l.type === 'cinematic') { clip.append(...sceneSegments(l, pps)); }
+    else if (l.type === 'roulette') { const S = stageTimes(l.params); STAGES.forEach(([k, lab], i) => clip.append(h('div', { class: 'seg', title: `${lab} · ${S[k].d.toFixed(1)} dtk`, style: { left: S[k].a * pps + 'px', width: S[k].d * pps + 'px', background: SEGC[i] + '55' } }))); clip.append(h('span', { style: { position: 'relative' } }, l.name)); }
     else { clip.append(h('span', { style: { position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis' } }, l.type === 'text' ? (l.text || '').split('\n')[0] : l.name)); clip.append(h('div', { class: 'h l', 'data-h': 'l' }), h('div', { class: 'h r', 'data-h': 'r' })); }
-    clip.addEventListener('pointerdown', e => startDrag(e, clip, { get a() { return l.start; }, get b() { return l.end; }, set(a, b) { l.start = a; l.end = b; }, trim: l.type !== 'roulette', id: l.id }, api));
+    clip.addEventListener('pointerdown', e => startDrag(e, clip, { get a() { return l.start; }, get b() { return l.end; }, set(a, b) { l.start = a; l.end = b; }, trim: !FULLFRAME(l.type), id: l.id }, api));
     clip.addEventListener('contextmenu', e => { e.preventDefault(); api.select(l.id); ctxMenu(e.clientX, e.clientY, [
       { label: 'Pindah ke playhead', run: () => { snap(); const d = l.end - l.start; l.start = s.t; l.end = s.t + d; changed(); } },
-      { label: 'Potong awal di playhead', disabled: l.type === 'roulette' || s.t <= l.start || s.t >= l.end, run: () => { snap(); l.start = s.t; changed(); } },
-      { label: 'Potong akhir di playhead', disabled: l.type === 'roulette' || s.t <= l.start || s.t >= l.end, run: () => { snap(); l.end = s.t; changed(); } },
+      { label: 'Potong awal di playhead', disabled: FULLFRAME(l.type) || s.t <= l.start || s.t >= l.end, run: () => { snap(); l.start = s.t; changed(); } },
+      { label: 'Potong akhir di playhead', disabled: FULLFRAME(l.type) || s.t <= l.start || s.t >= l.end, run: () => { snap(); l.end = s.t; changed(); } },
       { label: 'Duplikat', kbd: 'Ctrl+D', run: () => duplicateLayer(l) }, '-', { label: 'Hapus', kbd: 'Del', run: () => removeLayer(l) }]); });
     row.append(clip); rows.append(row);
+    if (l.type === 'cinematic' && s.sel === l.id && s.kfOpen !== false) { const kr = keyframeRows(l, pps, width); names.append(...kr.names); rows.append(...kr.rows); }
   }
   for (const tr of p.audio || []) {
     const len = () => tr.duration || (tr.assetDuration ? Math.max(0.1, tr.assetDuration - (tr.trimStart || 0)) : Math.max(0.5, dur - tr.start));

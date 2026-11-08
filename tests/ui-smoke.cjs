@@ -22,7 +22,32 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('  o
   await pg.keyboard.press('End'); await pg.waitForTimeout(100);
   const t1 = await pg.textContent('.time'); ok(/00:15/.test(t1) || /00:1/.test(t1), 'End lompat ke akhir: ' + t1);
   // click roulette clip, check props
-  await pg.click('.clip'); await pg.waitForTimeout(150); ok((await pg.textContent('.rpanel')).includes('Durasi tahap'), 'properti roulette tampil');
+  await pg.click('.clip'); await pg.waitForTimeout(200); ok((await pg.textContent('.rpanel')).includes('Scene (detik)'), 'properti cinematic tampil');
+  const nkf = await pg.$$eval('.kf', x => x.length); ok(nkf >= 30, 'track keyframe tampil di timeline: ' + nkf + ' key');
+  ok(await pg.$$eval('.clip .seg', x => x.length) === 6, '6 segmen scene di blok timeline');
+  // select a keyframe, edit its value and easing, then delete it with the keyboard
+  await pg.click('.tl-row[data-prop="camera.zoom"] .kf >> nth=1'); await pg.waitForTimeout(150);
+  ok((await pg.textContent('.rpanel')).includes('Keyframe terpilih'), 'keyframe terpilih di panel properti');
+  await pg.fill('.rpanel input[aria-label="Nilai"]', '1.4'); await pg.press('.rpanel input[aria-label="Nilai"]', 'Enter'); await pg.waitForTimeout(100);
+  await pg.selectOption('.rpanel select[aria-label="Easing ke keyframe berikutnya"]', 'outQuint'); await pg.waitForTimeout(100);
+  const kz = await pg.evaluate(() => { const l = window.__ed().p.layers[0]; return l.params.tracks['camera.zoom'].map(k => k.v + ':' + k.e).join(','); }); ok(/1\.4:outQuint/.test(kz), 'nilai & easing keyframe tersimpan: ' + kz);
+  await pg.click('.tl-row[data-prop="camera.zoom"] .kf[aria-pressed="true"]'); const before = await pg.$$eval('.tl-row[data-prop="camera.zoom"] .kf', x => x.length); await pg.keyboard.press('Delete'); await pg.waitForTimeout(150);
+  ok(await pg.$$eval('.tl-row[data-prop="camera.zoom"] .kf', x => x.length) === before - 1, 'keyframe dihapus dengan tombol Delete');
+  await pg.keyboard.press('Control+z'); await pg.waitForTimeout(150); ok(await pg.$$eval('.tl-row[data-prop="camera.zoom"] .kf', x => x.length) === before, 'undo mengembalikan keyframe');
+  // drag a keyframe along the timeline
+  await pg.click('.clip'); await pg.waitForTimeout(150);
+  await (await pg.$('.tl-row[data-prop="fx.flare"] .kf')).scrollIntoViewIfNeeded();
+  const kb = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf', e => { const r = e.getBoundingClientRect(); return { x: r.left + 7, y: r.top + 7 }; });
+  await pg.mouse.move(kb.x, kb.y); await pg.mouse.down(); await pg.mouse.move(kb.x + 30, kb.y, { steps: 6 }); await pg.mouse.up(); await pg.waitForTimeout(150);
+  const kb2 = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf', e => e.getBoundingClientRect().left + 7); ok(Math.abs(kb2 - kb.x - 30) < 4, 'keyframe bisa digeser di timeline');
+  // edit a value at the playhead: creates a new keyframe
+  await pg.evaluate(() => window.__seek(5.5)); await pg.waitForTimeout(200);
+  const nRoll = await pg.$$eval('.tl-row[data-prop="camera.roll"] .kf', x => x.length);
+  await pg.fill('.rpanel input[aria-label="Kamera · rotasi (°)"]', '6'); await pg.press('.rpanel input[aria-label="Kamera · rotasi (°)"]', 'Enter'); await pg.waitForTimeout(150);
+  ok(await pg.$$eval('.tl-row[data-prop="camera.roll"] .kf', x => x.length) === nRoll + 1, 'mengubah nilai di playhead membuat keyframe baru');
+  // scene duration change retimes the module
+  const sceneIn = await pg.$('.rpanel .group:has-text("Scene (detik)") input[type=number]'); await sceneIn.fill('2.5'); await sceneIn.press('Enter'); await pg.waitForTimeout(150);
+  ok((await pg.textContent('.time')).includes('12.50'), 'durasi scene mengubah total durasi: ' + (await pg.textContent('.time')));
   await pg.screenshot({ path: path.join(OUT, 'ui-2-editor.png') });
   // seek mid-spin by clicking ruler
   const rr = await pg.$eval('.tl-ruler', e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top }; });

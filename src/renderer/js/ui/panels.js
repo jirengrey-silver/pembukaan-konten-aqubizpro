@@ -5,23 +5,27 @@ import { E, sel, snap, changed, num, range, color, text, select, check, seg } fr
 import { newLayer, LAYER_TYPES, projectDuration, presetOf } from '../engine/scene.js';
 import { FONTS, uid, QB } from '../engine/util.js';
 import { STAGES, ACCEL, rouletteDuration, stageTimes, orbitSet } from '../engine/roulette.js';
+import { cineSet, cineDuration, cineSceneTimes, cineMissingLogos } from '../engine/cinematic.js';
+import { FULLFRAME } from '../engine/scene.js';
+import { selectedKeySection, playheadSection } from './keyframes.js';
 import { assetThumb, afterImport } from './dashboard.js';
 
 export const RAIL = [['layers', 'Layer', 'layers'], ['brand', 'Brand', 'star'], ['text', 'Teks', 'text'], ['media', 'Media', 'image'], ['bg', 'Latar', 'grid'], ['audio', 'Audio', 'music'], ['tpl', 'Template', 'template'], ['anim', 'Animasi', 'roulette']];
 const KIND_COLOR = { roulette: '#F2A93B', text: '#1E9BFF', image: '#3DDC97', logo: '#B78BFF', shape: '#93A4C3' };
 const p = () => E.s.p;
-const roulette = () => p().layers.find(l => l.type === 'roulette');
+const roulette = () => p().layers.find(l => l.type === 'cinematic') || p().layers.find(l => l.type === 'roulette');
+const setOf = l => (l.type === 'cinematic' ? cineSet(l.params) : orbitSet(l.params));
 const group = (title, ...kids) => h('div', { class: 'group' }, h('h3', null, title), ...kids);
 
 /* ---------- layer operations ---------- */
 export function addLayer(type, extra = {}) {
-  const s = E.s; snap(); const l = newLayer(type, s.p, Object.assign({ start: type === 'roulette' ? 0 : Math.min(s.t, projectDuration(s.p) - 0.5) }, extra));
-  if (type !== 'roulette' && !('end' in extra)) l.end = Math.max(l.start + 1, Math.min(projectDuration(s.p), l.start + 5));
-  if (type === 'roulette') { s.p.layers.unshift(l); s.p.duration = Math.max(s.p.duration, l.end); } else s.p.layers.push(l);
+  const s = E.s; snap(); const l = newLayer(type, s.p, Object.assign({ start: FULLFRAME(type) ? 0 : Math.min(s.t, projectDuration(s.p) - 0.5) }, extra));
+  if (!FULLFRAME(type) && !('end' in extra)) l.end = Math.max(l.start + 1, Math.min(projectDuration(s.p), l.start + 5));
+  if (FULLFRAME(type)) { s.p.layers.unshift(l); s.p.duration = Math.max(s.p.duration, l.end); } else s.p.layers.push(l);
   s.sel = l.id; changed('canvas tl props left'); return l;
 }
 export function removeLayer(l) { snap(); const s = E.s; s.p.layers = s.p.layers.filter(x => x.id !== l.id); if (s.sel === l.id) s.sel = null; changed('canvas tl props left'); toast(`Layer "${l.name}" dihapus · Ctrl+Z untuk membatalkan`, 'info', 2600); }
-export function duplicateLayer(l) { snap(); const c = JSON.parse(JSON.stringify(l)); c.id = uid(); c.name = l.name + ' (salinan)'; if (c.type !== 'roulette') { c.x += 30; c.y += 30; } if (c.params) c.params.brands.forEach(b => { b.id = b.id; }); const i = p().layers.indexOf(l); p().layers.splice(i + 1, 0, c); E.s.sel = c.id; changed('canvas tl props left'); }
+export function duplicateLayer(l) { snap(); const c = JSON.parse(JSON.stringify(l)); c.id = uid(); c.name = l.name + ' (salinan)'; if (!FULLFRAME(c.type)) { c.x += 30; c.y += 30; } if (c.params) c.params.brands.forEach(b => { b.id = b.id; }); const i = p().layers.indexOf(l); p().layers.splice(i + 1, 0, c); E.s.sel = c.id; changed('canvas tl props left'); }
 export function moveLayer(l, d) { const L = p().layers; const i = L.indexOf(l); const j = i + d; if (j < 0 || j >= L.length) return; snap(); L.splice(i, 1); L.splice(j, 0, l); changed('canvas tl left'); }
 
 /* ---------- asset picker ---------- */
@@ -45,7 +49,7 @@ export function buildLeft(el) {
 }
 function leftLayers() {
   const add = h('div', { class: 'g2' }, [['text', 'Teks', 'text'], ['image', 'Gambar', 'image'], ['logo', 'Logo', 'star'], ['shape', 'Bentuk', 'shape']].map(([t, l, ic]) => h('button', { class: 'btn sm', onclick: () => addLayer(t) }, icon(ic), l)));
-  const rb = roulette() ? null : h('button', { class: 'btn gold', onclick: () => addLayer('roulette') }, icon('roulette'), 'Tambah Brand Roulette Intro');
+  const rb = roulette() ? null : h('div', { class: 'stack', style: { gap: '6px' } }, h('button', { class: 'btn gold', onclick: () => addLayer('cinematic') }, icon('roulette'), 'Tambah Cinematic Brand Roulette'), h('button', { class: 'btn sm', onclick: () => addLayer('roulette') }, 'Tambah Brand Roulette (kotak misteri)'));
   const list = h('div', { class: 'stack', style: { gap: '4px' } });
   const L = p().layers.slice().reverse();
   for (const l of L) list.append(h('div', { class: 'brow' + (E.s.sel === l.id ? ' sel' : '') + (l.hidden ? ' off' : ''), style: { gridTemplateColumns: '6px minmax(0,1fr) auto', cursor: 'pointer' }, onclick: () => selectFromPanel(l.id) },
@@ -64,8 +68,8 @@ function selectFromPanel(id) { E.s.sel = id; changed('canvas tl props left'); E.
 /* brands */
 function leftBrands() {
   const r = roulette();
-  if (!r) return [h('div', { class: 'stack' }, h('p', { class: 'hint' }, 'Proyek ini belum memiliki Brand Roulette Intro.'), h('button', { class: 'btn gold', onclick: () => { addLayer('roulette'); } }, icon('roulette'), 'Tambah Brand Roulette Intro'))];
-  const q = r.params; const set = orbitSet(q); const chosen = set.list[set.sel];
+  if (!r) return [h('div', { class: 'stack' }, h('p', { class: 'hint' }, 'Proyek ini belum memiliki layer Brand Roulette.'), h('button', { class: 'btn gold', onclick: () => { addLayer('cinematic'); } }, icon('roulette'), 'Tambah Cinematic Brand Roulette'))];
+  const q = r.params; const set = setOf(r); const chosen = set.list[set.sel]; const cine = r.type === 'cinematic'; const missing = cine ? set.list.filter(b => !b.assetId).length : 0;
   const modeSeg = h('div', { class: 'flex', style: { gap: '4px' } }, [['random', 'Acak'], ['manual', 'Pilih sendiri']].map(([v, l]) => h('button', { class: 'btn sm', 'aria-pressed': String(q.selection === v), onclick: () => { snap(); q.selection = v; if (v === 'manual' && !q.selectedId && chosen) q.selectedId = chosen.id; changed('canvas left props'); } }, l)));
   const info = h('div', { class: 'card', style: { padding: '10px', background: 'var(--bg2)' } }, h('span', { class: 'lab' }, 'Brand yang akan terpilih'), h('div', { style: { fontFamily: 'var(--display)', fontWeight: 700, fontSize: '16px', color: 'var(--gold)' } }, chosen ? chosen.name || '(logo tanpa nama)' : '—'),
     q.selection === 'random' ? h('button', { class: 'btn sm', style: { marginTop: '6px' }, onclick: () => { snap(); q.seed = Math.floor(Math.random() * 100000); changed('canvas left props'); } }, icon('shuffle'), 'Acak ulang') : h('p', { class: 'hint', style: { marginTop: '4px' } }, 'Klik bintang pada brand untuk memilihnya.'));
@@ -74,18 +78,18 @@ function leftBrands() {
     const inOrbit = i < set.n || set.list.includes(b); const isSel = chosen && chosen.id === b.id;
     const lg = h('button', { class: 'lg', title: 'Unggah / ganti logo (PNG atau SVG)', 'aria-label': 'Logo ' + (b.name || 'brand'), style: b.assetId ? { backgroundImage: `url("${api.assetUrl(b.assetId)}")` } : null, onclick: async () => { const a = await pickAsset(['brand-logo'], 'Logo untuk ' + (b.name || 'brand')); if (a) { snap(); b.assetId = a.id; if (!b.name) b.name = a.name; changed('canvas left'); } } }, b.assetId ? '' : 'LOGO');
     const nm = h('input', { type: 'text', value: b.name, 'aria-label': 'Nama brand ' + (i + 1), placeholder: 'Nama brand' }); nm.addEventListener('input', () => { snap('bn' + b.id); b.name = nm.value; changed('canvas'); }); nm.addEventListener('change', () => changed('left'));
-    list.append(h('div', { class: 'brow' + (isSel ? ' sel' : '') + (inOrbit ? '' : ' off'), title: inOrbit ? '' : 'Di luar jumlah logo yang mengorbit' }, lg, nm,
+    list.append(h('div', { class: 'brow' + (isSel ? ' sel' : '') + (inOrbit ? '' : ' off'), title: inOrbit ? (cine && !b.assetId ? 'Logo belum diunggah' : '') : 'Di luar jumlah logo yang mengorbit', style: cine && inOrbit && !b.assetId ? { borderColor: 'rgba(245,181,71,.55)' } : null }, lg, nm,
       h('button', { class: 'btn ghost icon sm', 'aria-label': 'Jadikan brand terpilih', title: 'Jadikan brand terpilih', 'aria-pressed': String(isSel && q.selection === 'manual'), onclick: () => { snap(); q.selection = 'manual'; q.selectedId = b.id; changed('canvas left props'); } }, icon('star')),
       h('button', { class: 'btn ghost icon sm', 'aria-label': 'Menu brand', title: 'Lainnya', onclick: e => { const rr = e.currentTarget.getBoundingClientRect(); import('./dom.js').then(d => d.ctxMenu(rr.left, rr.bottom + 4, [
         { label: 'Naikkan', disabled: i === 0, run: () => { snap(); q.brands.splice(i - 1, 0, q.brands.splice(i, 1)[0]); changed('canvas left'); } },
         { label: 'Turunkan', disabled: i === q.brands.length - 1, run: () => { snap(); q.brands.splice(i + 1, 0, q.brands.splice(i, 1)[0]); changed('canvas left'); } },
-        { label: 'Hapus logo (pakai teks)', disabled: !b.assetId, run: () => { snap(); b.assetId = null; changed('canvas left'); } },
+        { label: cine ? 'Lepas logo' : 'Hapus logo (pakai teks)', disabled: !b.assetId, run: () => { snap(); b.assetId = null; changed('canvas left'); } },
         { label: 'Hapus brand', disabled: q.brands.length <= 3, run: () => { snap(); q.brands.splice(i, 1); if (q.selectedId === b.id) q.selectedId = null; changed('canvas left props'); } }])); } }, icon('more'))));
   });
   const addBrand = h('div', { class: 'g2' }, h('button', { class: 'btn sm', onclick: () => { snap(); q.brands.push({ id: uid(), name: 'Brand baru', assetId: null }); changed('canvas left props'); } }, icon('plus'), 'Brand'),
     h('button', { class: 'btn sm', onclick: () => bulkLogos(q) }, icon('upload'), 'Banyak logo'));
   return [h('div', { class: 'stack' }, h('div', { class: 'row' }, h('span', { class: 'lab' }, 'Cara memilih brand'), modeSeg), info,
-    h('div', { class: 'row' }, h('span', { class: 'lab' }, h('span', null, 'Daftar brand'), h('span', null, `${set.n} mengorbit dari ${q.brands.length}`)), h('p', { class: 'hint' }, 'Klik kotak LOGO untuk mengunggah logo PNG/SVG. Tanpa logo, nama brand ditulis di tile. Jumlah yang mengorbit diatur di panel Properti.'), list), addBrand)];
+    h('div', { class: 'row' }, h('span', { class: 'lab' }, h('span', null, 'Daftar brand'), h('span', null, `${set.n} mengorbit dari ${q.brands.length}`)), h('p', { class: 'hint' }, cine ? 'Klik kotak LOGO untuk mengunggah logo asli (PNG transparan atau SVG). Modul cinematic selalu memakai gambar logo; brand tanpa logo tampil sebagai kotak kosong bergaris.' : 'Klik kotak LOGO untuk mengunggah logo PNG/SVG. Tanpa logo, nama brand ditulis di tile. Jumlah yang mengorbit diatur di panel Properti.'), missing ? h('div', { class: 'warnbox' }, `${missing} brand yang mengorbit belum punya logo.`) : null, list), addBrand)];
 }
 async function bulkLogos(q) {
   const r = await api.assets.importDialog('brand-logo'); afterImport(r); if (!r.added.length) return;
@@ -159,10 +163,11 @@ function leftAnim() {
 
 /* ---------- right properties ---------- */
 export function buildProps(el) {
-  const l = sel(); const body = h('div', { class: 'pb scroll stack' });
+  const l = sel(); const body = h('div', { class: 'pb scroll stack' }); const oldPb = el.querySelector('.pb'); const keep = oldPb && el.dataset.for === (l ? l.id : '') ? oldPb.scrollTop : 0; el.dataset.for = l ? l.id : ''; requestAnimationFrame(() => { body.scrollTop = keep; });
   el.replaceChildren(h('div', { class: 'ph' }, h('h2', null, l ? (l.name || LAYER_TYPES[l.type]) : 'Proyek'), h('span', { class: 'hint' }, l ? LAYER_TYPES[l.type] + (l.locked ? ' · terkunci' : '') : 'Tidak ada layer dipilih')), body);
   if (!l) { body.append(...projectProps()); return; }
-  if (l.type === 'roulette') body.append(...rouletteProps(l));
+  if (l.type === 'cinematic') body.append(...cinematicProps(l));
+  else if (l.type === 'roulette') body.append(...rouletteProps(l));
   else body.append(...layerProps(l));
   body.append(group('Layer', h('div', { class: 'g2' }, h('button', { class: 'btn sm', onclick: () => duplicateLayer(l) }, icon('copy'), 'Duplikat'), h('button', { class: 'btn sm danger', onclick: () => removeLayer(l) }, icon('trash'), 'Hapus'))));
 }
@@ -177,7 +182,7 @@ function projectProps() {
 }
 function timing(l) {
   const dur = { get v() { return +(l.end - l.start).toFixed(2); } }; const o = { d: dur.v };
-  return group('Waktu & tampil', h('div', { class: 'g2' }, num('Mulai (dtk)', l, 'start', { min: 0, step: 0.1, set: v => { l.end = v + o.d; } }), l.type === 'roulette' ? h('div', { class: 'row' }, h('span', { class: 'lab' }, 'Durasi (dtk)'), h('div', { class: 'tag', style: { padding: '6px 8px', fontSize: '12.5px' } }, o.d.toFixed(1) + ' · dari tahap')) : num('Durasi (dtk)', o, 'd', { min: 0.1, step: 0.1, set: v => { l.end = l.start + v; } })),
+  return group('Waktu & tampil', h('div', { class: 'g2' }, num('Mulai (dtk)', l, 'start', { min: 0, step: 0.1, set: v => { l.end = v + o.d; } }), FULLFRAME(l.type) ? h('div', { class: 'row' }, h('span', { class: 'lab' }, 'Durasi (dtk)'), h('div', { class: 'tag', style: { padding: '6px 8px', fontSize: '12.5px' } }, o.d.toFixed(2) + (l.type === 'cinematic' ? ' · dari scene' : ' · dari tahap'))) : num('Durasi (dtk)', o, 'd', { min: 0.1, step: 0.1, set: v => { l.end = l.start + v; } })),
     range('Opasitas', l, 'opacity', { min: 0, max: 1, step: 0.01, fmt: v => Math.round(v * 100) + '%' }),
     h('div', { class: 'g2' }, num('Fade in (dtk)', l, 'fadeIn', { min: 0, step: 0.1 }), num('Fade out (dtk)', l, 'fadeOut', { min: 0, step: 0.1 })));
 }
@@ -243,6 +248,47 @@ function rouletteProps(l) {
     group('Halaman review', text('Judul', q.review, 'title', { placeholder: 'Product Review', parts: 'canvas' }), text('Subjudul', q.review, 'subtitle', { placeholder: 'Contoh: ThinkPad X1 Carbon Gen 12', parts: 'canvas' }),
       q.review.productAssetId ? h('div', { class: 'acard' }, h('div', { class: 'th', style: { aspectRatio: '16/10' } }, h('img', { src: api.assetUrl(q.review.productAssetId), alt: '' }))) : null,
       h('div', { class: 'g2' }, h('button', { class: 'btn sm', onclick: async () => { const a = await pickAsset(['product-image'], 'Foto produk untuk halaman review'); if (a) { snap(); q.review.productAssetId = a.id; changed('canvas props'); } } }, icon('image'), q.review.productAssetId ? 'Ganti foto' : 'Foto produk'), q.review.productAssetId ? h('button', { class: 'btn sm', onclick: () => { snap(); q.review.productAssetId = null; changed('canvas props'); } }, 'Lepas foto') : null)),
+    timing(l)
+  ];
+}
+
+/* cinematic brand roulette */
+function cinematicProps(l) {
+  const q = l.params; const set = cineSet(q); const chosen = set.list[set.sel]; const miss = cineMissingLogos(q); const S = cineSceneTimes(q);
+  const refit = () => { const was = Math.abs(p().duration - l.end) < 0.01; l.end = l.start + cineDuration(q); if (was || p().duration < l.end) p().duration = l.end; };
+  const cols = ['#F2A93B', '#1E9BFF', '#F57C1F', '#3DDC97', '#B78BFF', '#FFD36B'];
+  const bar = h('div', { class: 'stagebar', 'aria-hidden': 'true' }, q.scenes.map((sc, i) => h('span', { title: `${sc.label}: ${S[sc.id].d.toFixed(2)} dtk`, style: { width: (S[sc.id].d / S.total * 100) + '%', background: cols[i % 6] } }, String(i + 1))));
+  const selObj = { v: q.selection === 'manual' && q.selectedId ? q.selectedId : '__random' };
+  const pickBtn = (label, cats, title, get, set2) => h('button', { class: 'btn sm', onclick: async () => { const a = await pickAsset(cats, title); if (a) { snap(); set2(a.id); changed('canvas props left'); } } }, icon('upload'), get() ? 'Ganti ' + label : 'Pilih ' + label);
+  const pct = v => v + '%';
+  return [
+    miss.center || miss.brands.length ? h('div', { class: 'warnbox' }, [miss.center ? 'Logo QBizPro belum dipilih. ' : '', miss.brands.length ? `${miss.brands.length} brand belum punya logo: ${miss.brands.slice(0, 4).join(', ')}${miss.brands.length > 4 ? '…' : ''}. ` : '', 'Unggah logo asli lewat panel kiri → Brand.'].join('')) : null,
+    selectedKeySection(group),
+    group('Brand terpilih', select('Brand yang berhenti di titik fokus', selObj, 'v', [['__random', `Acak (sekarang: ${chosen ? chosen.name || 'logo' : '—'})`], ...q.brands.map(b => [b.id, b.name || '(logo)'])], { parts: '', set: v => { if (v === '__random') q.selection = 'random'; else { q.selection = 'manual'; q.selectedId = v; } changed('canvas left props'); } }),
+      q.selection === 'random' ? h('button', { class: 'btn sm', onclick: () => { snap(); q.seed = Math.floor(Math.random() * 100000); changed('canvas left props'); } }, icon('shuffle'), 'Acak ulang brand') : null),
+    group('Scene (detik)', bar, h('div', { class: 'g2' }, q.scenes.map((sc, i) => num(`${i + 1}. ${sc.label}`, sc, 'dur', { min: 0, max: 30, step: 0.05, parts: 'canvas tl props', set: () => refit() }))),
+      h('p', { class: 'hint' }, `Total ${S.total.toFixed(2)} detik. Keyframe ikut bergeser bersama scene-nya.`)),
+    playheadSection(l, group),
+    group('Logo QBizPro (pusat orbit)', q.centerAssetId ? h('div', { class: 'acard' }, h('div', { class: 'th', style: { aspectRatio: '16/9' } }, h('img', { src: api.assetUrl(q.centerAssetId), alt: '' }))) : null,
+      pickBtn('logo', ['brand-logo', 'icon', 'illustration'], 'Logo QBizPro', () => q.centerAssetId, id => { q.centerAssetId = id; }),
+      range('Ukuran logo (% sisi panjang layar)', q, 'logoSize', { min: 3, max: 30, step: 0.5, fmt: pct }),
+      h('div', { class: 'g2' }, range('Posisi X', q, 'centerX', { min: 10, max: 90, step: 0.5, fmt: pct }), range('Posisi Y', q, 'centerY', { min: 10, max: 90, step: 0.5, fmt: pct }))),
+    group('Orbit 3D', range('Jumlah logo mengorbit', q, 'count', { min: 3, max: Math.max(3, Math.min(24, q.brands.length)), step: 1, parts: 'canvas left' }),
+      range('Radius orbit (% lebar)', q.orbit, 'radius', { min: 15, max: 49, step: 0.5, fmt: pct }), range('Ukuran logo brand (% layar)', q.orbit, 'brandSize', { min: 3, max: 18, step: 0.25, fmt: pct }),
+      h('div', { class: 'g2' }, num('Skala depan', q.orbit, 'depthNear', { min: 0.3, max: 2, step: 0.01 }), num('Skala belakang', q.orbit, 'depthFar', { min: 0.2, max: 2, step: 0.01 })),
+      range('Redup di belakang', q.orbit, 'depthFade', { min: 0, max: 0.9, step: 0.01, fmt: v => Math.round(v * 100) + '%' }),
+      seg('Arah putaran', q.orbit, 'direction', [['cw', 'Searah jarum jam'], ['ccw', 'Berlawanan']]),
+      range('Gerak orbit sebelum roulette (°/dtk)', q.orbit, 'idleSpeed', { min: 0, max: 90, step: 1 }), range('Tebal garis orbit', q.orbit, 'ringWidth', { min: 0, max: 3, step: 0.1 }),
+      h('p', { class: 'hint' }, 'Kemiringan 3D, skala radius, dan munculnya brand diatur lewat keyframe Orbit.')),
+    group('Roulette', range('Jumlah putaran penuh', q.spin, 'rotations', { min: 0, max: 15, step: 1, fmt: v => v + '×' }),
+      h('div', { class: 'g2' }, range('Bagian akselerasi', q.spin, 'accel', { min: 5, max: 60, step: 1, fmt: pct }), range('Bagian deselerasi', q.spin, 'decel', { min: 10, max: 90, step: 1, fmt: pct })),
+      range('Motion blur', q.spin, 'motionBlur', { min: 0, max: 1.5, step: 0.05 }), h('p', { class: 'hint' }, 'Akselerasi/deselerasi berlaku untuk easing "Roulette" pada track Roulette · progres putaran. Waktu mulai dan berhenti diatur dengan menggeser keyframe-nya.')),
+    group('Kamera', range('Ukuran brand saat fokus penuh', q.camera, 'fill', { min: 20, max: 95, step: 1, fmt: v => v + '% layar' }), h('p', { class: 'hint' }, 'Zoom, fokus, geser, dan rotasi kamera diatur lewat keyframe Kamera.')),
+    group('Efek', check('Partikel cahaya', q.fx, 'particles'), check('Lantai grid perspektif', q.fx, 'floor'), check('Vignette', q.fx, 'vignette'), check('Nama brand di bawah logo terpilih', q.fx, 'showName'), range('Kekuatan bloom', q.fx, 'bloom', { min: 0, max: 2, step: 0.05 })),
+    group('Warna', h('div', { class: 'g3' }, color('Latar', q.colors, 'bg'), color('Emas', q.colors, 'gold'), color('Biru', q.colors, 'blue'))),
+    group('Product showcase', text('Judul', q.showcase, 'title', { placeholder: 'Product Review', parts: 'canvas' }), text('Subjudul', q.showcase, 'subtitle', { placeholder: 'Contoh: seri laptop bisnis terbaru', parts: 'canvas' }),
+      q.showcase.productAssetId ? h('div', { class: 'acard' }, h('div', { class: 'th', style: { aspectRatio: '16/10' } }, h('img', { src: api.assetUrl(q.showcase.productAssetId), alt: '' }))) : null,
+      pickBtn('foto produk', ['product-image'], 'Foto produk', () => q.showcase.productAssetId, id => { q.showcase.productAssetId = id; })),
     timing(l)
   ];
 }

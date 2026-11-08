@@ -4,8 +4,10 @@ import { h, icon, toast, modal, fmtSize, fmtTime, preload } from './dom.js';
 import { E } from './ed-state.js';
 import { projectDuration, presetOf } from '../engine/scene.js';
 import { draw, projectAssetIds } from './render.js';
+import { cineMissingLogos } from '../engine/cinematic.js';
 
 const PRESETS = [
+  ['cine60', 'Cinematic 1080×1920 · 60 fps', { fmt: 'h264', fps: 60, mbps: 20, scale: 1, quality: 'best' }],
   ['social', 'Story / Reels / TikTok', { fmt: 'h264', fps: 30, mbps: 12, scale: 1, quality: 'balanced' }],
   ['smooth', 'Gerak halus 60 fps', { fmt: 'h264', fps: 60, mbps: 18, scale: 1, quality: 'balanced' }],
   ['youtube', 'YouTube kualitas tinggi', { fmt: 'h264', fps: 30, mbps: 16, scale: 1, quality: 'best' }],
@@ -18,7 +20,8 @@ const safeName = s => String(s || 'video').replace(/[\\/:*?"<>|]+/g, ' ').replac
 
 export async function openExport() {
   const s = E.s; const p = s.p; const caps = await api.export.capabilities(); const def = await api.export.defaultFolder();
-  const st = Object.assign({ preset: 'social', fmt: 'h264', fps: p.fps || 30, mbps: 12, scale: 1, quality: 'balanced', encoder: null, folder: def, name: safeName(p.name), audio: true, jpgQ: 0.92 }, s.exportPrefs || {});
+  const hasCine = p.layers.some(l => l.type === 'cinematic' && !l.hidden);
+  const st = Object.assign({ preset: hasCine ? 'cine60' : 'social', fmt: 'h264', fps: p.fps || 30, mbps: 12, scale: 1, quality: 'balanced', encoder: null, folder: def, name: safeName(p.name), audio: true, jpgQ: 0.92 }, s.exportPrefs || {});
   st.folder = st.folder || def;
   const body = h('div', { class: 'stack' }); let running = null;
   const m = modal({ title: 'Ekspor', wide: true, body, actions: [], onClose: () => { if (running) running.cancel(); } });
@@ -26,6 +29,7 @@ export async function openExport() {
   const encFor = f => (f === 'h265' ? caps.encoders.h265 : caps.encoders.h264);
   const pickEnc = () => { const list = encFor(st.fmt); if (!list.find(e => e.id === st.encoder)) st.encoder = (list.find(e => e.gpu) || list[0] || {}).id || null; };
   const isVideo = () => st.fmt === 'h264' || st.fmt === 'h265';
+  function missingNote() { const m = p.layers.filter(l => l.type === 'cinematic' && !l.hidden).map(l => cineMissingLogos(l.params)); const nb = m.reduce((a, x) => a + x.brands.length, 0), nc = m.some(x => x.center); if (!nb && !nc) return null; return h('div', { class: 'warnbox' }, `Perhatian: ${nc ? 'logo QBizPro belum dipilih' : ''}${nc && nb ? ' dan ' : ''}${nb ? nb + ' brand belum punya logo' : ''}. Bagian itu akan tampil sebagai kotak kosong di video.`); }
   function render() {
     pickEnc(); s.exportPrefs = Object.assign({}, st);
     const dur = projectDuration(p); const W = even(p.width * st.scale), H = even(p.height * st.scale); const frames = Math.ceil(dur * st.fps);
@@ -49,6 +53,7 @@ export async function openExport() {
         ? h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('span', null, `${W}×${H} · ${st.fps} fps · ${fmtTime(dur)} · ${frames} frame`), h('b', null, 'Perkiraan ukuran ≈ ' + fmtSize(est)))
         : h('span', null, `Frame di ${fmtTime(s.t)} · ${W}×${H} ${st.fmt.toUpperCase()}`)),
       noFF ? h('p', { class: 'hint', style: { color: 'var(--warn)' } }, caps.error || 'FFmpeg tidak ditemukan, ekspor MP4 tidak tersedia.') : null,
+      missingNote(),
       h('p', { class: 'hint' }, `Area aman ${presetOf(p.preset).label} hanya panduan di editor dan tidak ikut terekspor.`));
     foot.replaceChildren(h('button', { class: 'btn', onclick: () => m.close() }, 'Tutup'), h('button', { class: 'btn gold', disabled: noFF || (isVideo() && !st.encoder), onclick: () => (isVideo() ? runVideo() : runImage()) }, icon('export'), isVideo() ? 'Mulai ekspor video' : 'Simpan gambar'));
   }

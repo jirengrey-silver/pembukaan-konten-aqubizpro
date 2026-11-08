@@ -2,6 +2,8 @@
 // Pure drawing code: images come from an injected lookup so it runs in the app, in export and in tests.
 import { clamp, lerp, seg, EASE, hexA, fontCss, uid } from './util.js';
 import { drawRoulette, defaultRoulette, rouletteDuration } from './roulette.js';
+import { drawCinematic, defaultCinematic, cineDuration } from './cinematic.js';
+export const FULLFRAME = t => t === 'roulette' || t === 'cinematic';
 
 export const PRESETS = [
   { id: 'wa', group: 'Vertikal', label: 'WhatsApp Status / Story', w: 1080, h: 1920, safe: { t: 190, b: 230, l: 40, r: 40 } },
@@ -17,11 +19,12 @@ export const PRESETS = [
 ];
 export const presetOf = id => PRESETS.find(p => p.id === id) || PRESETS[0];
 
-export const LAYER_TYPES = { roulette: 'Brand Roulette', text: 'Teks', image: 'Gambar', logo: 'Logo', shape: 'Bentuk' };
+export const LAYER_TYPES = { cinematic: 'Cinematic Brand Roulette', roulette: 'Brand Roulette', text: 'Teks', image: 'Gambar', logo: 'Logo', shape: 'Bentuk' };
 const base = (o) => Object.assign({ id: uid(), name: '', start: 0, end: 5, x: 540, y: 960, w: 400, h: 200, scale: 1, rotation: 0, opacity: 1, fadeIn: 0, fadeOut: 0, blur: 0, locked: false, hidden: false,
   border: { width: 0, color: '#F2A93B', radius: 0 }, shadow: { on: false, color: '#000000', blur: 30, x: 0, y: 12, alpha: 0.5 } }, o);
 export function newLayer(type, project, extra = {}) {
   const W = project.width, H = project.height, m = Math.min(W, H); const t0 = extra.start ?? 0;
+  if (type === 'cinematic') { const params = defaultCinematic(); return base(Object.assign({ type, name: 'QBizPro Cinematic Brand Roulette', start: t0, end: t0 + cineDuration(params), x: W / 2, y: H / 2, w: W, h: H, params }, extra)); }
   if (type === 'roulette') { const params = defaultRoulette(); return base(Object.assign({ type, name: 'Brand Roulette Intro', start: t0, end: t0 + rouletteDuration(params), x: W / 2, y: H / 2, w: W, h: H, params }, extra)); }
   if (type === 'text') return base(Object.assign({ type, name: 'Teks', start: t0, end: t0 + 5, x: W / 2, y: H / 2, w: W * 0.8, h: m * 0.12, text: 'Teks baru', font: 'sora', size: Math.round(m * 0.07), weight: 800, color: '#FFFFFF', align: 'center', letterSpacing: 0, lineHeight: 1.15,
     gradient: { on: false, c1: '#F2A93B', c2: '#F57C1F' }, outline: { width: 0, color: '#000000' }, glow: { on: false, color: '#1E9BFF', size: 24 }, bg: { on: false, color: '#0A1631', pad: 24, radius: 16, alpha: 0.8 } }, extra));
@@ -39,7 +42,7 @@ export function projectDuration(p) { return Math.max(1, p.duration || 1, ...p.la
 export function changePreset(project, presetId) {
   const P = presetOf(presetId); const sx = P.w / project.width, sy = P.h / project.height, sm = Math.min(P.w, P.h) / Math.min(project.width, project.height);
   for (const l of project.layers) {
-    if (l.type === 'roulette') { l.x = P.w / 2; l.y = P.h / 2; l.w = P.w; l.h = P.h; continue; }
+    if (FULLFRAME(l.type)) { l.x = P.w / 2; l.y = P.h / 2; l.w = P.w; l.h = P.h; continue; }
     l.x *= sx; l.y *= sy; l.w *= sm; l.h *= sm; if (l.size) l.size = Math.round(l.size * sm);
   }
   project.preset = P.id; project.width = P.w; project.height = P.h; return project;
@@ -83,6 +86,7 @@ export function drawLayer(g, l, t, p, imgs, custom) {
   if (l.hidden || t < l.start || t >= l.end) return;
   const a = layerAlpha(l, t); if (a <= 0.001) return;
   if (l.type === 'roulette') { g.save(); g.globalAlpha = a; drawRoulette(g, p.width, p.height, t - l.start, l.params, imgs); g.restore(); return; }
+  if (l.type === 'cinematic') { g.save(); g.globalAlpha = a; drawCinematic(g, p.width, p.height, t - l.start, l.params, imgs); g.restore(); return; }
   g.save(); g.globalAlpha = a; g.translate(l.x, l.y); if (l.rotation) g.rotate(l.rotation * Math.PI / 180); if (l.scale !== 1) g.scale(l.scale, l.scale);
   if (l.blur > 0 && 'filter' in g) g.filter = `blur(${l.blur}px)`;
   if (l.shadow && l.shadow.on) { g.shadowColor = hexA(l.shadow.color, l.shadow.alpha ?? 0.5); g.shadowBlur = l.shadow.blur; g.shadowOffsetX = l.shadow.x; g.shadowOffsetY = l.shadow.y; }
@@ -108,16 +112,17 @@ export function renderFrame(g, p, t, imgs, custom) {
   g.restore();
 }
 // rough on-screen bounds of a layer at its own transform, used for selection and dragging
-export function layerBox(l, p) { if (l.type === 'roulette') return { x: 0, y: 0, w: p.width, h: p.height, cx: p.width / 2, cy: p.height / 2 }; const w = l.w * l.scale, h = (l.type === 'text' ? Math.max(l.h, l.size * 1.3) : l.h) * l.scale; return { x: l.x - w / 2, y: l.y - h / 2, w, h, cx: l.x, cy: l.y }; }
+export function layerBox(l, p) { if (FULLFRAME(l.type)) return { x: 0, y: 0, w: p.width, h: p.height, cx: p.width / 2, cy: p.height / 2 }; const w = l.w * l.scale, h = (l.type === 'text' ? Math.max(l.h, l.size * 1.3) : l.h) * l.scale; return { x: l.x - w / 2, y: l.y - h / 2, w, h, cx: l.x, cy: l.y }; }
 export function hitTest(p, t, px, py) {
-  for (let i = p.layers.length - 1; i >= 0; i--) { const l = p.layers[i]; if (l.hidden || t < l.start || t >= l.end || l.type === 'roulette') continue; const b = layerBox(l, p); const a = -(l.rotation || 0) * Math.PI / 180; const dx = px - l.x, dy = py - l.y; const rx = dx * Math.cos(a) - dy * Math.sin(a) + l.x, ry = dx * Math.sin(a) + dy * Math.cos(a) + l.y; if (rx >= b.x && rx <= b.x + b.w && ry >= b.y && ry <= b.y + b.h) return l; }
-  const r = p.layers.slice().reverse().find(l => l.type === 'roulette' && !l.hidden && t >= l.start && t < l.end); return r || null;
+  for (let i = p.layers.length - 1; i >= 0; i--) { const l = p.layers[i]; if (l.hidden || t < l.start || t >= l.end || FULLFRAME(l.type)) continue; const b = layerBox(l, p); const a = -(l.rotation || 0) * Math.PI / 180; const dx = px - l.x, dy = py - l.y; const rx = dx * Math.cos(a) - dy * Math.sin(a) + l.x, ry = dx * Math.sin(a) + dy * Math.cos(a) + l.y; if (rx >= b.x && rx <= b.x + b.w && ry >= b.y && ry <= b.y + b.h) return l; }
+  const r = p.layers.slice().reverse().find(l => FULLFRAME(l.type) && !l.hidden && t >= l.start && t < l.end); return r || null;
 }
 
 /* ---------------- built-in templates ---------------- */
 export function builtinTemplates() {
   return [
-    { id: 'builtin:roulette', name: 'QBizPro Brand Roulette Intro', category: 'Pembuka', description: 'Logo QBizPro di tengah, brand IT mengorbit seperti roulette, satu brand terpilih lalu kamera zoom ke halaman review.', make: (preset) => { const p = newProject(preset, 'Brand Roulette Intro'); const l = newLayer('roulette', p); p.layers.push(l); p.duration = l.end; return p; } },
+    { id: 'builtin:cinematic', name: 'QBizPro Cinematic Brand Roulette', category: 'Pembuka', description: 'Storyboard 6 scene, 12 detik: logo reveal, orbit 3D, roulette, pemilihan brand, zoom kamera, transisi ke product review. Semua gerak diatur lewat keyframe.', make: (preset) => { const p = newProject(preset, 'Cinematic Brand Roulette'); p.fps = 60; const l = newLayer('cinematic', p); p.layers.push(l); p.duration = l.end; return p; } },
+    { id: 'builtin:roulette', name: 'Brand Roulette Intro (kotak misteri)', category: 'Pembuka', description: 'Logo QBizPro di tengah, brand IT mengorbit seperti roulette, satu brand terpilih lalu kamera zoom ke halaman review.', make: (preset) => { const p = newProject(preset, 'Brand Roulette Intro'); const l = newLayer('roulette', p); p.layers.push(l); p.duration = l.end; return p; } },
     { id: 'builtin:blank', name: 'Proyek kosong', category: 'Dasar', description: 'Latar navy dengan satu judul. Tambahkan gambar, logo, teks, dan bentuk sendiri.', make: (preset) => { const p = newProject(preset, 'Proyek baru'); const tl = newLayer('text', p, { text: 'Judul konten', end: 10 }); p.layers.push(tl); p.duration = 10; return p; } }
   ];
 }

@@ -1,7 +1,7 @@
 // Runs every automated check: animation engine, UI in Chromium, and the full desktop app with a real MP4 export.
 import { spawnSync } from 'child_process'; import fs from 'fs';
 const has = cmd => spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd]).status === 0;
-const steps = [['Mesin animasi Brand Roulette', ['node', ['tests/render-roulette.js']]], ['Tampilan di Chromium', ['node', ['tests/ui-smoke.cjs']]]];
+const steps = [['Mesin Cinematic Brand Roulette', ['node', ['tests/render-cinematic.js']]], ['Mesin animasi Brand Roulette', ['node', ['tests/render-roulette.js']]], ['Tampilan di Chromium', ['node', ['tests/ui-smoke.cjs']]]];
 const needX = process.platform === 'linux' && !process.env.DISPLAY;
 if (!needX) steps.push(['Aplikasi desktop + ekspor MP4', ['node', ['tests/e2e-electron.cjs']]]);
 else if (has('xvfb-run')) steps.push(['Aplikasi desktop + ekspor MP4', ['xvfb-run', ['-a', 'node', 'tests/e2e-electron.cjs']]]);

@@ -12,7 +12,7 @@ const SECTIONS = [
   ['exports', 'Video hasil ekspor', 'film'], ['presets', 'Preset ukuran', 'grid'], ['settings', 'Pengaturan', 'settings']
 ];
 let current = 'home'; let projFilter = { q: '', archived: false }; let assetFilter = '';
-const st = { preset: 'wa', start: 'builtin:roulette' };
+const st = { preset: 'wa', start: 'builtin:cinematic' };
 
 export function topbarDash() {
   const tb = $('#topbar'); tb.replaceChildren(
@@ -60,7 +60,7 @@ async function home() {
       h('div', { class: 'flex' }, h('button', { class: 'btn sm', onclick: async () => { await api.projects.discardRecovery(r.id); showDashboard('home'); } }, 'Buang'), h('button', { class: 'btn sm gold', onclick: async () => { const p = await api.projects.recover(r.id); toast('Proyek dipulihkan', 'ok'); nav.editor(p); } }, icon('restore'), 'Pulihkan')))))));
   const nameIn = h('input', { type: 'text', id: 'newName', placeholder: 'Contoh: Intro brand minggu ini', 'aria-label': 'Nama proyek' });
   const starts = [...builtinTemplates().map(t => ({ id: t.id, name: t.name, d: t.description })), ...userTpl.map(t => ({ id: t.id, name: t.name, d: 'Template milik Anda · ' + t.width + '×' + t.height }))];
-  if (!starts.find(s => s.id === st.start)) st.start = 'builtin:roulette';
+  if (!starts.find(s => s.id === st.start)) st.start = 'builtin:cinematic';
   const startSel = h('select', { 'aria-label': 'Mulai dari', onchange: e => { st.start = e.target.value; desc.textContent = starts.find(s => s.id === st.start).d; } }, starts.map(s => h('option', { value: s.id, selected: s.id === st.start }, s.name)));
   const desc = h('p', { class: 'hint' }, starts.find(s => s.id === st.start).d);
   const create = h('div', { class: 'card create' }, h('h2', null, 'Buat proyek baru'),
@@ -196,10 +196,12 @@ export const guessCat = ext => (['mp3', 'wav', 'm4a', 'ogg', 'aac'].includes(ext
 
 /* ---------- animation library ---------- */
 function animations() {
-  const ready = [['Brand Roulette Intro', 'Pembuka 8 tahap: cahaya, garis orbit, logo brand muncul, roulette berputar, melambat, sorotan, zoom kamera, halaman review.'],
+  const ready = [['QBizPro Cinematic Brand Roulette', 'Storyboard 6 scene (12 detik): logo reveal, aktivasi orbit 3D, roulette dengan akselerasi-deselerasi, pemilihan brand, zoom kamera, transisi ke product review. Semua gerak memakai keyframe yang bisa diedit.'],
+    ['Keyframe (modul cinematic)', 'Kamera, logo, orbit, putaran roulette, efek, dan transisi showcase punya track keyframe dengan pilihan easing. Edit di timeline atau di panel Properti.'],
+    ['Brand Roulette Intro', 'Pembuka 8 tahap: cahaya, garis orbit, logo brand muncul, roulette berputar, melambat, sorotan, zoom kamera, halaman review.'],
     ['Fade in / fade out', 'Setiap layer bisa muncul dan menghilang perlahan. Atur di panel Properti → Tampil.'], ['Blur, bayangan, glow, outline', 'Efek dasar untuk teks, gambar, logo, dan bentuk.']];
   const later = [['Animasi teks', 'Fade up, typewriter, slide, zoom, glitch, neon, gradient, mask reveal, letter by letter, word by word.', 'Fase 2'], ['Motion', 'Slide, zoom, rotate, bounce, elastic, glow pulse, light sweep, floating, parallax, camera push/pan.', 'Fase 2'],
-    ['Keyframe', 'Posisi, skala, rotasi, opasitas, dan blur yang berubah sepanjang waktu, dengan pilihan easing.', 'Fase 2'], ['Transisi', 'Wipe, slide, zoom-through, flash, dan cahaya di antara adegan.', 'Fase 3']];
+    ['Keyframe untuk layer biasa', 'Posisi, skala, rotasi, opasitas, dan blur teks/gambar yang berubah sepanjang waktu.', 'Fase 2'], ['Transisi', 'Wipe, slide, zoom-through, flash, dan cahaya di antara adegan.', 'Fase 3']];
   return [head('Pustaka animasi', 'Animasi yang sudah bisa dipakai di Fase 1, dan yang dijadwalkan untuk fase berikutnya.'),
     h('div', { class: 'section' }, h('div', { class: 'flex' }, h('h2', null, 'Siap dipakai')), h('div', { class: 'gallery', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } }, ready.map(([n, d]) => h('article', { class: 'card stack' }, h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('h2', null, n), h('span', { class: 'tag gold' }, 'Siap')), h('p', { class: 'hint' }, d))))),
     h('div', { class: 'section' }, h('div', { class: 'flex' }, h('h2', null, 'Berikutnya')), h('div', { class: 'gallery', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' } }, later.map(([n, d, f]) => h('article', { class: 'card stack', style: { opacity: 0.75 } }, h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('h2', null, n), h('span', { class: 'tag' }, f)), h('p', { class: 'hint' }, d)))))];

@@ -2,10 +2,11 @@
 import { api } from '../api.js';
 import { h, $, icon, toast, modal, promptBox, img, onImageLoad, fmtTime } from './dom.js';
 import { E, hooks, session, sel, snap, changed, undo, redo } from './ed-state.js';
-import { PRESETS, presetOf, changePreset, projectDuration, hitTest, layerBox } from '../engine/scene.js';
+import { PRESETS, presetOf, changePreset, projectDuration, hitTest, layerBox, FULLFRAME } from '../engine/scene.js';
 import { clamp } from '../engine/util.js';
 import { draw, thumbnail } from './render.js';
 import { buildLeft, buildProps, RAIL, removeLayer, duplicateLayer } from './panels.js';
+import { deleteKey } from './keyframes.js';
 import { buildTimeline, drawPlayhead } from './timeline.js';
 import { openExport } from './exportdlg.js';
 import { nav } from './nav.js';
@@ -17,6 +18,7 @@ export async function openEditor(p) {
   if (!p) return;
   if (!p.audio) p.audio = [];
   session(p); stopPlay();
+  window.__ed = () => E.s; window.__seek = t => seek(t); // used by automated UI tests
   buildLayout();
   if (!keyBound) { document.addEventListener('keydown', onKey); keyBound = true; }
   offImg && offImg(); offImg = onImageLoad(() => hooks.canvas());
@@ -93,7 +95,7 @@ function buildLayout() {
   stage.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); const cur = s.zoom === 'fit' ? fitScale() : s.zoom; s.zoom = clamp(cur * (e.deltaY < 0 ? 1.1 : 0.9), 0.1, 2); stage.classList.remove('fit'); zoomSel.value = ''; renderCanvas(); }, { passive: false });
   renderCanvas();
 }
-export function select(id) { E.s.sel = id; hooks.props(); hooks.tl(); renderCanvas(); }
+export function select(id) { if (E.s.sel !== id) E.s.selKey = null; E.s.sel = id; hooks.props(); hooks.tl(); renderCanvas(); }
 
 /* ---------- canvas ---------- */
 function fitScale() { const r = els.stage.getBoundingClientRect(); const p = E.s.p; return Math.max(0.05, Math.min((r.width - 32) / p.width, (r.height - 32) / p.height)); }
@@ -126,8 +128,8 @@ function placeSel(sc) {
   const l = sel(); const b = els.selbox;
   if (!l || l.hidden || E.s.t < l.start || E.s.t >= l.end) { b.hidden = true; return; }
   const box = layerBox(l, E.s.p); b.hidden = false;
-  Object.assign(b.style, { left: box.x * sc + 'px', top: box.y * sc + 'px', width: box.w * sc + 'px', height: box.h * sc + 'px', transform: l.rotation && l.type !== 'roulette' ? `rotate(${l.rotation}deg)` : '', borderStyle: l.type === 'roulette' ? 'dashed' : 'solid' });
-  if (l.type !== 'roulette' && !l.locked) { if (b.children.length !== 4) { b.replaceChildren(...['nw', 'ne', 'sw', 'se'].map(c => h('i', { 'data-c': c, style: { pointerEvents: 'auto', cursor: c === 'nw' || c === 'se' ? 'nwse-resize' : 'nesw-resize', left: c[1] === 'w' ? '-5px' : '', right: c[1] === 'e' ? '-5px' : '', top: c[0] === 'n' ? '-5px' : '', bottom: c[0] === 's' ? '-5px' : '' } }))); } }
+  Object.assign(b.style, { left: box.x * sc + 'px', top: box.y * sc + 'px', width: box.w * sc + 'px', height: box.h * sc + 'px', transform: l.rotation && !FULLFRAME(l.type) ? `rotate(${l.rotation}deg)` : '', borderStyle: FULLFRAME(l.type) ? 'dashed' : 'solid' });
+  if (!FULLFRAME(l.type) && !l.locked) { if (b.children.length !== 4) { b.replaceChildren(...['nw', 'ne', 'sw', 'se'].map(c => h('i', { 'data-c': c, style: { pointerEvents: 'auto', cursor: c === 'nw' || c === 'se' ? 'nwse-resize' : 'nesw-resize', left: c[1] === 'w' ? '-5px' : '', right: c[1] === 'e' ? '-5px' : '', top: c[0] === 'n' ? '-5px' : '', bottom: c[0] === 's' ? '-5px' : '' } }))); } }
   else b.replaceChildren();
 }
 let drag = null;
@@ -137,7 +139,7 @@ function setupPointer() {
   c.addEventListener('pointerdown', e => {
     if (e.button !== 0) return; const s = E.s; const q = pt(e); const l = hitTest(s.p, s.t, q.x, q.y);
     if ((l ? l.id : null) !== s.sel) select(l ? l.id : null);
-    if (l && l.type !== 'roulette' && !l.locked) { drag = { kind: 'move', l, ox: q.x - l.x, oy: q.y - l.y, moved: false }; c.setPointerCapture(e.pointerId); }
+    if (l && !FULLFRAME(l.type) && !l.locked) { drag = { kind: 'move', l, ox: q.x - l.x, oy: q.y - l.y, moved: false }; c.setPointerCapture(e.pointerId); }
   });
   els.selbox.addEventListener('pointerdown', e => {
     const corner = e.target.dataset && e.target.dataset.c; if (!corner) return; e.stopPropagation(); const l = sel(); if (!l) return;
@@ -160,7 +162,8 @@ function setupPointer() {
 }
 
 /* ---------- playback ---------- */
-export function seek(t) { const s = E.s; s.t = clamp(t, 0, projectDuration(s.p)); if (s.playing) syncAudio(true); renderCanvas(); }
+let propsRaf = 0;
+export function seek(t) { const s = E.s; s.t = clamp(t, 0, projectDuration(s.p)); if (s.playing) syncAudio(true); renderCanvas(); if (!s.playing && sel() && sel().type === 'cinematic') { cancelAnimationFrame(propsRaf); propsRaf = requestAnimationFrame(() => hooks.props()); } }
 function step(n) { const s = E.s; stopPlay(); seek(Math.round(s.t * s.p.fps + n) / s.p.fps); }
 function togglePlay() { E.s.playing ? stopPlay() : startPlay(); }
 function startPlay() {
@@ -171,7 +174,7 @@ function startPlay() {
   syncAudio(true); raf = requestAnimationFrame(tick);
 }
 export function stopPlay() {
-  cancelAnimationFrame(raf); if (E.s) E.s.playing = false; for (const a of audioEls.values()) a.pause();
+  cancelAnimationFrame(raf); const was = E.s && E.s.playing; if (E.s) E.s.playing = false; for (const a of audioEls.values()) a.pause(); if (was && sel() && sel().type === 'cinematic') hooks.props();
   if (els) { els.playB.replaceChildren(icon('play')); els.playB.setAttribute('aria-label', 'Putar (Spasi)'); }
 }
 function syncAudio(force) {
@@ -209,11 +212,12 @@ function onKey(e) {
   if (e.key === 'End') { e.preventDefault(); stopPlay(); seek(projectDuration(s.p)); return; }
   if (e.key === ',' || e.key === '.') { e.preventDefault(); step(e.key === ',' ? -1 : 1); return; }
   if (k === 'f' && !mod) { e.preventDefault(); fullscreen(); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && s.selKey) { e.preventDefault(); deleteKey(s.selKey); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && sel()) { e.preventDefault(); removeLayer(sel()); return; }
   if (e.key === 'Escape' && s.sel) { select(null); return; }
   if (e.key.startsWith('Arrow')) {
     const l = sel(); const d = e.shiftKey ? 10 : 1;
-    if (l && l.type !== 'roulette' && !l.locked) { e.preventDefault(); snap('nudge' + l.id); if (e.key === 'ArrowLeft') l.x -= d; if (e.key === 'ArrowRight') l.x += d; if (e.key === 'ArrowUp') l.y -= d; if (e.key === 'ArrowDown') l.y += d; changed('canvas props'); }
+    if (l && !FULLFRAME(l.type) && !l.locked) { e.preventDefault(); snap('nudge' + l.id); if (e.key === 'ArrowLeft') l.x -= d; if (e.key === 'ArrowRight') l.x += d; if (e.key === 'ArrowUp') l.y -= d; if (e.key === 'ArrowDown') l.y += d; changed('canvas props'); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? s.p.fps : 1)); }
   }
 }
