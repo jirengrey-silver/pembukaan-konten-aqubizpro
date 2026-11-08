@@ -36,10 +36,10 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('  o
   await pg.keyboard.press('Control+z'); await pg.waitForTimeout(150); ok(await pg.$$eval('.tl-row[data-prop="camera.zoom"] .kf', x => x.length) === before, 'undo mengembalikan keyframe');
   // drag a keyframe along the timeline
   await pg.click('.clip'); await pg.waitForTimeout(150);
-  await (await pg.$('.tl-row[data-prop="fx.flare"] .kf')).scrollIntoViewIfNeeded();
-  const kb = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf', e => { const r = e.getBoundingClientRect(); return { x: r.left + 7, y: r.top + 7 }; });
+  await (await pg.$('.tl-row[data-prop="fx.flare"] .kf:last-of-type')).scrollIntoViewIfNeeded();
+  const kb = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf:last-of-type', e => { const r = e.getBoundingClientRect(); return { x: r.left + 7, y: r.top + 7 }; });
   await pg.mouse.move(kb.x, kb.y); await pg.mouse.down(); await pg.mouse.move(kb.x + 30, kb.y, { steps: 6 }); await pg.mouse.up(); await pg.waitForTimeout(150);
-  const kb2 = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf', e => e.getBoundingClientRect().left + 7); ok(Math.abs(kb2 - kb.x - 30) < 4, 'keyframe bisa digeser di timeline');
+  const kb2 = await pg.$eval('.tl-row[data-prop="fx.flare"] .kf:last-of-type', e => e.getBoundingClientRect().left + 7); ok(Math.abs(kb2 - kb.x - 30) < 4, 'keyframe bisa digeser di timeline');
   // edit a value at the playhead: creates a new keyframe
   await pg.evaluate(() => window.__seek(5.5)); await pg.waitForTimeout(200);
   const nRoll = await pg.$$eval('.tl-row[data-prop="camera.roll"] .kf', x => x.length);

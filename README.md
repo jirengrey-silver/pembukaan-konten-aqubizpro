@@ -52,6 +52,13 @@ Storyboard 6 scene, total 12 detik, menjadi template bawaan proyek baru (60 fps)
 | 5 | Brand Zoom In | 9–11 dtk |
 | 6 | Product Review Transition | 11–12 dtk |
 
+- **Alur bawaan:**
+  1. Logo QBizPro jatuh dari atas, memantul, lalu berhenti di tengah dengan hentakan dan debu.
+  2. Logo brand muncul, lalu berubah menjadi kotak emas bertanda ? lewat letupan sihir dan asap.
+  3. Kotak-kotak berputar dari lambat ke cepat, lalu berhenti.
+  4. Kotak terpilih di-zoom ke layar, bergetar perlahan, retak bercahaya, lalu pecah dan menampilkan brand.
+
+  Garis orbit disembunyikan, tetapi bisa diaktifkan lagi di Efek.
 - **Logo QBizPro selalu di pusat orbit.** Ukuran bawaannya 10% dari sisi panjang layar dan bisa diubah.
 - **Logo brand mengorbit dalam 3D:** ukuran dan kecerahan mengikuti kedalaman, motion blur muncul saat cepat, garis orbit di depan dan di belakang logo.
 - **Putaran roulette:** easing khusus yang halus saat mulai dan saat berhenti.

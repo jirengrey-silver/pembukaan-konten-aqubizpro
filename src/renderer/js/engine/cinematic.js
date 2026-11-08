@@ -29,6 +29,7 @@ export const EASINGS = {
   inSine: ['Ease in (lembut)', x => 1 - Math.cos(x * Math.PI / 2)], outSine: ['Ease out (lembut)', x => Math.sin(x * Math.PI / 2)], inOutSine: ['Ease in-out (lembut)', x => -(Math.cos(Math.PI * x) - 1) / 2],
   inCubic: ['Ease in', x => x * x * x], outCubic: ['Ease out', x => 1 - Math.pow(1 - x, 3)], inOutCubic: ['Ease in-out', x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)],
   inQuint: ['Ease in (kuat)', x => x ** 5], outQuint: ['Ease out (kuat)', x => 1 - Math.pow(1 - x, 5)], inOutQuint: ['Ease in-out (kuat)', x => (x < 0.5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2)],
+  outBounce: ['Jatuh memantul', x => { const n = 7.5625, d = 2.75; if (x < 1 / d) return n * x * x; if (x < 2 / d) return n * (x -= 1.5 / d) * x + 0.75; if (x < 2.5 / d) return n * (x -= 2.25 / d) * x + 0.9375; return n * (x -= 2.625 / d) * x + 0.984375; }],
   outBack: ['Pantul keluar', x => { const c = 1.5; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }],
   roulette: ['Roulette (akselerasi → deselerasi)', null], hold: ['Tahan (lompat)', x => (x >= 1 ? 1 : 0)]
 };
@@ -38,37 +39,41 @@ function ease(name, x, p) { if (name === 'roulette') return fromTable(rouletteTa
 export const CINE_PROPS = [
   ['camera.zoom', 'Kamera · zoom', 'Kamera', 1, 0.2, 8, 0.01], ['camera.focus', 'Kamera · fokus ke brand terpilih', 'Kamera', 0, 0, 1, 0.01],
   ['camera.panX', 'Kamera · geser X (%)', 'Kamera', 0, -50, 50, 0.1], ['camera.panY', 'Kamera · geser Y (%)', 'Kamera', 0, -50, 50, 0.1], ['camera.roll', 'Kamera · rotasi (°)', 'Kamera', 0, -45, 45, 0.1],
-  ['logo.opacity', 'Logo QBizPro · opasitas', 'Logo', 1, 0, 1, 0.01], ['logo.scale', 'Logo QBizPro · skala', 'Logo', 1, 0, 4, 0.01], ['logo.rotY', 'Logo QBizPro · putar 3D (°)', 'Logo', 0, -180, 180, 1], ['logo.glow', 'Logo QBizPro · cahaya', 'Logo', 0.5, 0, 2, 0.01],
+  ['logo.opacity', 'Logo QBizPro · opasitas', 'Logo', 1, 0, 1, 0.01], ['logo.scale', 'Logo QBizPro · skala', 'Logo', 1, 0, 4, 0.01], ['logo.rotY', 'Logo QBizPro · putar 3D (°)', 'Logo', 0, -180, 180, 1], ['logo.glow', 'Logo QBizPro · cahaya', 'Logo', 0.5, 0, 2, 0.01], ['logo.dropY', 'Logo QBizPro · jatuh dari atas (% tinggi)', 'Logo', 0, -120, 20, 0.5], ['fx.impact', 'Efek · hentakan logo mendarat', 'Efek', 0, 0, 1.5, 0.01],
   ['orbit.ring', 'Orbit · garis tergambar', 'Orbit', 1, 0, 1, 0.01], ['orbit.radius', 'Orbit · skala radius', 'Orbit', 1, 0.2, 2, 0.01], ['orbit.tilt', 'Orbit · kemiringan 3D (°)', 'Orbit', 64, 0, 89, 0.5],
   ['orbit.brands', 'Orbit · brand muncul', 'Orbit', 1, 0, 1, 0.01], ['orbit.opacity', 'Orbit · opasitas', 'Orbit', 1, 0, 1, 0.01],
   ['spin.progress', 'Roulette · progres putaran', 'Roulette', 0, 0, 1, 0.001],
   ['fx.flare', 'Efek · lens flare', 'Efek', 0, 0, 1.5, 0.01], ['fx.highlight', 'Efek · sorot brand terpilih', 'Efek', 0, 0, 1.5, 0.01], ['fx.rays', 'Efek · sinar cahaya', 'Efek', 0, 0, 1.5, 0.01],
-  ['fx.flash', 'Efek · kilatan putih', 'Efek', 0, 0, 1, 0.01], ['showcase.progress', 'Transisi ke product showcase', 'Showcase', 0, 0, 1, 0.01]
+  ['fx.magic', 'Efek · sihir brand → kotak emas', 'Efek', 0, 0, 1, 0.01], ['fx.crack', 'Efek · kotak bergetar, retak, pecah', 'Efek', 0, 0, 1, 0.01], ['fx.flash', 'Efek · kilatan putih', 'Efek', 0, 0, 1, 0.01], ['showcase.progress', 'Transisi ke product showcase', 'Showcase', 0, 0, 1, 0.01]
 ].map(([key, label, group, def, min, max, step]) => ({ key, label, group, def, min, max, step }));
 export const propOf = k => CINE_PROPS.find(p => p.key === k);
 
 const K = (s, u, v, e = 'inOutSine') => ({ id: uid(), s, u, v, e });
 export function defaultTracks() {
   return {
-    'camera.zoom': [K('logo', 0, 1.18, 'inOutSine'), K('orbit', 1, 1, 'linear'), K('select', 0.2, 1, 'inOutSine'), K('select', 1, 1.08, 'linear')],
-    'camera.focus': [K('select', 0.35, 0, 'inOutSine'), K('select', 1, 0.1, 'inOutCubic'), K('zoom', 1, 1, 'linear')],
+    'camera.zoom': [K('logo', 0, 1.06, 'inOutSine'), K('orbit', 1, 1, 'linear'), K('select', 0.2, 1, 'inOutSine'), K('select', 1, 1.08, 'linear')],
+    'camera.focus': [K('select', 0.35, 0, 'inOutSine'), K('select', 1, 0.1, 'inOutCubic'), K('zoom', 0.42, 1, 'linear')],
     'camera.panX': [K('logo', 0, 0, 'linear')], 'camera.panY': [K('logo', 0, 0, 'linear')],
-    'camera.roll': [K('logo', 0, -3, 'outCubic'), K('orbit', 0.6, 0, 'linear'), K('zoom', 0, 0, 'inOutSine'), K('zoom', 0.55, 2.5, 'inOutSine'), K('zoom', 1, 0, 'linear')],
-    'logo.opacity': [K('logo', 0.05, 0, 'outCubic'), K('logo', 0.45, 1, 'linear')],
-    'logo.scale': [K('logo', 0.05, 0.55, 'outBack'), K('logo', 0.7, 1, 'linear')],
-    'logo.rotY': [K('logo', 0.05, -100, 'outCubic'), K('logo', 0.75, 0, 'linear')],
-    'logo.glow': [K('logo', 0.1, 0, 'outCubic'), K('logo', 0.5, 1.2, 'inOutSine'), K('orbit', 0.6, 0.55, 'linear'), K('select', 0.3, 0.55, 'inOutSine'), K('select', 0.7, 0.25, 'linear')],
+    'camera.roll': [K('zoom', 0, 0, 'inOutSine'), K('zoom', 0.35, 2, 'inOutSine'), K('zoom', 0.6, 0, 'linear')],
+    'logo.dropY': [K('logo', 0, -72, 'outBounce'), K('logo', 0.55, 0, 'linear')],
+    'logo.opacity': [K('logo', 0, 1, 'linear')],
+    'logo.scale': [K('logo', 0, 1, 'linear')],
+    'logo.rotY': [K('logo', 0, 0, 'linear')],
+    'logo.glow': [K('logo', 0, 0.2, 'linear'), K('logo', 0.2, 0.2, 'outCubic'), K('logo', 0.4, 1.3, 'inOutSine'), K('orbit', 0.4, 0.55, 'linear'), K('select', 0.3, 0.55, 'inOutSine'), K('select', 0.7, 0.25, 'linear')],
+    'fx.impact': [K('logo', 0.19, 0, 'linear'), K('logo', 0.2, 1, 'outCubic'), K('logo', 0.75, 0, 'linear')],
     'orbit.ring': [K('orbit', 0, 0, 'inOutCubic'), K('orbit', 0.6, 1, 'linear')],
-    'orbit.radius': [K('orbit', 0, 0.72, 'outCubic'), K('orbit', 0.85, 1, 'linear')],
-    'orbit.tilt': [K('orbit', 0, 84, 'outCubic'), K('orbit', 0.85, 58, 'linear')],
-    'orbit.brands': [K('orbit', 0.2, 0, 'linear'), K('orbit', 1, 1, 'linear')],
-    'orbit.opacity': [K('zoom', 0.1, 1, 'inOutSine'), K('zoom', 0.65, 0, 'linear')],
-    'spin.progress': [K('roulette', 0, 0, 'roulette'), K('select', 0.3, 1, 'linear')],
-    'fx.flare': [K('logo', 0.12, 0, 'inOutSine'), K('logo', 0.42, 1, 'inOutSine'), K('logo', 0.85, 0, 'linear')],
+    'orbit.radius': [K('orbit', 0, 0.72, 'outCubic'), K('orbit', 0.6, 1, 'linear')],
+    'orbit.tilt': [K('orbit', 0, 84, 'outCubic'), K('orbit', 0.6, 58, 'linear')],
+    'orbit.brands': [K('logo', 0.85, 0, 'linear'), K('orbit', 0.4, 1, 'linear')],
+    'orbit.opacity': [K('zoom', 0, 1, 'inOutSine'), K('zoom', 0.38, 0, 'linear')],
+    'fx.magic': [K('orbit', 0.45, 0, 'linear'), K('roulette', 0.12, 1, 'linear')],
+    'spin.progress': [K('roulette', 0.12, 0, 'roulette'), K('select', 0.3, 1, 'linear')],
+    'fx.flare': [K('logo', 0.19, 0, 'outCubic'), K('logo', 0.3, 1, 'inOutSine'), K('logo', 0.8, 0, 'linear')],
     'fx.highlight': [K('select', 0.25, 0, 'outBack'), K('select', 0.6, 1, 'linear')],
-    'fx.rays': [K('select', 0.3, 0, 'outCubic'), K('select', 0.75, 1, 'inOutSine'), K('zoom', 0.8, 0.7, 'inOutSine'), K('review', 0.6, 0, 'linear')],
-    'fx.flash': [K('zoom', 0.88, 0, 'outCubic'), K('review', 0.12, 0.16, 'inOutSine'), K('review', 0.6, 0, 'linear')],
-    'showcase.progress': [K('zoom', 0.9, 0, 'inOutCubic'), K('review', 1, 1, 'linear')]
+    'fx.rays': [K('select', 0.3, 0, 'outCubic'), K('select', 0.75, 1, 'inOutSine'), K('zoom', 0.4, 0.45, 'inOutSine'), K('zoom', 0.7, 0, 'linear')],
+    'fx.crack': [K('zoom', 0.4, 0, 'inSine'), K('zoom', 1, 1, 'linear')],
+    'fx.flash': [K('zoom', 0.84, 0, 'outCubic'), K('zoom', 0.88, 0.45, 'outCubic'), K('review', 0.3, 0, 'linear')],
+    'showcase.progress': [K('review', 0, 0, 'inOutCubic'), K('review', 1, 1, 'linear')]
   };
 }
 export function defaultCinematic() {
@@ -81,7 +86,7 @@ export function defaultCinematic() {
     orbit: { radius: 42, brandSize: 9, depthNear: 1.15, depthFar: 0.58, depthFade: 0.45, direction: 'cw', idleSpeed: 22, ringWidth: 1 },
     spin: { rotations: 5, accel: 25, decel: 55, motionBlur: 0.8 },
     camera: { fill: 62 },
-    fx: { particles: true, floor: true, vignette: true, bloom: 1, showName: true },
+    fx: { particles: true, floor: true, vignette: true, bloom: 1, showName: true, rings: false, smoke: true },
     colors: { bg: QB.navy, gold: QB.gold, blue: QB.blue },
     showcase: { title: 'Product Review', subtitle: '', productAssetId: null },
     tracks: defaultTracks()
@@ -151,6 +156,63 @@ function glowSprite(color) {
   const key = 'g|' + color; let c = sprites.get(key); if (c) return c; const B = 256; c = mk(B, B); const g = c.getContext('2d');
   const gr = g.createRadialGradient(B / 2, B / 2, 0, B / 2, B / 2, B / 2); gr.addColorStop(0, hexA(color, 1)); gr.addColorStop(0.35, hexA(color, 0.45)); gr.addColorStop(1, hexA(color, 0)); g.fillStyle = gr; g.fillRect(0, 0, B, B); sprites.set(key, c); return c;
 }
+function goldSprite(px) {
+  const B = bucket(px); const key = 'gold|' + B; let c = sprites.get(key); if (c) return c;
+  c = mk(B, B); const g = c.getContext('2d'); const m = B * 0.04, r = B * 0.2, w = B - m * 2;
+  const gr = g.createLinearGradient(m, m, B - m, B - m); gr.addColorStop(0, '#FFF1B8'); gr.addColorStop(0.28, '#F7C451'); gr.addColorStop(0.62, '#E39B22'); gr.addColorStop(1, '#B9720F');
+  g.fillStyle = gr; rr(g, m, m, w, w, r); g.fill();
+  const sh = g.createLinearGradient(0, m, 0, B * 0.55); sh.addColorStop(0, 'rgba(255,255,255,0.55)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; rr(g, m + B * 0.05, m + B * 0.05, w - B * 0.1, B * 0.4, r * 0.7); g.fill();
+  g.lineWidth = B * 0.03; g.strokeStyle = 'rgba(255,248,214,0.9)'; rr(g, m + B * 0.06, m + B * 0.06, w - B * 0.12, w - B * 0.12, r * 0.7); g.stroke();
+  g.lineWidth = B * 0.022; g.strokeStyle = '#8A5409'; rr(g, m, m, w, w, r); g.stroke();
+  g.font = `800 ${B * 0.6}px ${HEAD}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(122,72,6,0.55)'; g.fillText('?', B / 2 + B * 0.02, B / 2 + B * 0.055);
+  g.fillStyle = '#0A1631'; g.fillText('?', B / 2, B / 2 + B * 0.03);
+  g.lineWidth = B * 0.012; g.strokeStyle = 'rgba(255,236,170,0.8)'; g.strokeText('?', B / 2, B / 2 + B * 0.03);
+  sprites.set(key, c); return c;
+}
+// magic puff that turns a brand tile into a gold mystery box: flash, sparkles and drifting smoke
+function magicPuff(g, p, x, y, s, k, seed) {
+  if (k <= 0 || k >= 1) return; const C = p.colors; g.save();
+  const fl = Math.sin(clamp((k - 0.25) / 0.35) * Math.PI); if (fl > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = fl * 0.95; const G = glowSprite(C.gold || QB.gold); g.drawImage(G, x - s * 1.6, y - s * 1.6, s * 3.2, s * 3.2); g.globalAlpha = fl * 0.7; const Wt = glowSprite('#FFFFFF'); g.drawImage(Wt, x - s * 0.8, y - s * 0.8, s * 1.6, s * 1.6); }
+  // sparkles flying outward
+  g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 12; i++) { const a = hash(seed * 13 + i) * TAU; const sp = clamp((k - 0.28) / 0.6); if (sp <= 0) continue; const d = s * (0.3 + sp * (0.9 + hash(seed + i * 3) * 0.9)); const al = (1 - sp); const r = s * (0.025 + hash(i + seed) * 0.03) * (1 - sp * 0.5);
+    const X = x + Math.cos(a) * d, Y = y + Math.sin(a) * d - sp * s * 0.2; g.globalAlpha = al; g.fillStyle = i % 3 ? (C.gold || QB.gold) : '#FFFFFF'; g.beginPath(); g.moveTo(X, Y - r * 2.4); g.lineTo(X + r * 0.6, Y - r * 0.6); g.lineTo(X + r * 2.4, Y); g.lineTo(X + r * 0.6, Y + r * 0.6); g.lineTo(X, Y + r * 2.4); g.lineTo(X - r * 0.6, Y + r * 0.6); g.lineTo(X - r * 2.4, Y); g.lineTo(X - r * 0.6, Y - r * 0.6); g.closePath(); g.fill(); }
+  // smoke: soft puffs that billow out, hide the swap, then drift up and thin away
+  if (p.fx.smoke !== false) { g.globalCompositeOperation = 'source-over'; const SM = glowSprite('#C9CEDC'); for (let i = 0; i < 9; i++) { const a = hash(seed * 7 + i * 1.7) * TAU; const sk = clamp((k - 0.18 - hash(i + seed) * 0.08) / 0.82); if (sk <= 0) continue; const d = s * (0.12 + sk * (0.45 + hash(seed + i) * 0.4)); const r = s * (0.45 + sk * (0.55 + hash(i * 3 + seed) * 0.4));
+    g.globalAlpha = Math.sin(Math.min(1, sk * 1.35) * Math.PI) * 0.62; g.drawImage(SM, x + Math.cos(a) * d - r, y + Math.sin(a) * d * 0.7 - sk * s * 0.45 - r, r * 2, r * 2); } }
+  g.restore();
+}
+// the chosen box shakes, cracks open with light leaking out, then bursts into shards that reveal the brand
+function crackShape(seed) { const N = 7; const out = []; const cx = (hash(seed) - 0.5) * 0.12, cy = (hash(seed + 1) - 0.5) * 0.12; for (let i = 0; i < N; i++) { const a = (i + 0.2 + hash(seed + i * 5) * 0.6) / N * TAU; const pts = [[cx, cy]]; for (let k = 1; k <= 5; k++) { const aa = a + (hash(seed + i * 11 + k) - 0.5) * 0.35; const R = 0.5 / Math.max(Math.abs(Math.cos(aa)), Math.abs(Math.sin(aa))); const rr2 = k === 5 ? 1.05 : k / 5; pts.push([cx + Math.cos(aa) * R * rr2, cy + Math.sin(aa) * R * rr2]); } out.push({ a, pts }); } return { cx, cy, cracks: out }; }
+function crackBox(g, p, it, img, k, t, hlGlow) {
+  g.globalAlpha = 1;
+  const C = p.colors; const s = it.s; const x0 = it.x, y0 = it.y; const shakeAmp = clamp(k / 0.75) ** 1.6 * (k < 0.8 ? 1 : 0); const shx = Math.sin(t * 61) * s * 0.03 * shakeAmp + Math.sin(t * 23) * s * 0.012 * shakeAmp, shy = Math.cos(t * 53) * s * 0.025 * shakeAmp, rot = Math.sin(t * 47) * 0.035 * shakeAmp;
+  const x = x0 + shx, y = y0 + shy; const shape = crackShape(it.i + 3); const crk = clamp((k - 0.18) / 0.58); const burst = clamp((k - 0.78) / 0.22);
+  const spr = goldSprite(s * 1.0 * (it.Z || 1)); const card = cardSprite(img, s * (it.Z || 1), 0);
+  if (burst > 0) { // brand card revealed behind the shards
+    const e = 1 + 2.2 * Math.pow(burst - 1, 3) + 1.2 * Math.pow(burst - 1, 2); const cs = s * lerp(0.82, 1, e);
+    g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - burst * 0.6); const G = glowSprite(C.gold || QB.gold); g.drawImage(G, x0 - s * 2, y0 - s * 2, s * 4, s * 4); g.restore();
+    g.save(); g.globalAlpha = clamp(burst * 3); g.drawImage(card, x0 - cs / 2, y0 - cs / 2, cs, cs); g.lineWidth = s * 0.035; g.strokeStyle = C.gold || QB.gold; rr(g, x0 - cs * 0.48, y0 - cs * 0.48, cs * 0.96, cs * 0.96, cs * 0.19); g.stroke(); g.restore();
+    const cr = shape.cracks; for (let i = 0; i < cr.length; i++) { // shard i lies between crack i and crack i+1
+      const A = cr[i], B = cr[(i + 1) % cr.length]; let a1 = A.a, a2 = B.a; if (a2 <= a1) a2 += TAU; const poly = [...A.pts];
+      for (let q = 1; q < 6; q++) { const aa = a1 + (a2 - a1) * q / 6; const R = 0.5 / Math.max(Math.abs(Math.cos(aa)), Math.abs(Math.sin(aa))) * 1.05; poly.push([shape.cx + Math.cos(aa) * R, shape.cy + Math.sin(aa) * R]); }
+      poly.push(...B.pts.slice().reverse()); const mid = (a1 + a2) / 2; const sp = s * (0.25 + burst * (1.1 + hash(i + 40) * 0.9)); const fall = burst * burst * s * 0.6;
+      g.save(); g.globalAlpha = 1 - burst; g.translate(x0 + Math.cos(mid) * sp * burst, y0 + Math.sin(mid) * sp * burst + fall); g.rotate((hash(i + 7) - 0.5) * 2.4 * burst); const sc = 1 + burst * 0.25; g.scale(sc, sc);
+      g.beginPath(); poly.forEach(([px2, py2], j) => (j ? g.lineTo(px2 * s, py2 * s) : g.moveTo(px2 * s, py2 * s))); g.closePath(); g.clip(); g.drawImage(spr, -s / 2, -s / 2, s, s); g.restore();
+    }
+    g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 26; i++) { const a = hash(i * 3.3) * TAU; const d = s * (0.4 + burst * (1.2 + hash(i) * 1.6)); g.globalAlpha = 1 - burst; g.fillStyle = i % 3 ? (C.gold || QB.gold) : '#FFFFFF'; g.beginPath(); g.arc(x0 + Math.cos(a) * d, y0 + Math.sin(a) * d, s * (0.012 + hash(i + 2) * 0.02), 0, TAU); g.fill(); } g.restore();
+    return;
+  }
+  if (hlGlow > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = clamp(hlGlow) * 0.9; g.drawImage(glowSprite(C.gold || QB.gold), x - s * 1.25, y - s * 1.25, s * 2.5, s * 2.5); g.restore(); }
+  g.save(); g.translate(x, y); g.rotate(rot); g.drawImage(spr, -s / 2, -s / 2, s, s);
+  if (crk > 0) { // glowing cracks: a wide warm glow, then a dark fracture line
+    g.beginPath(); g.roundRect(-s * 0.48, -s * 0.48, s * 0.96, s * 0.96, s * 0.19); g.clip(); g.lineCap = 'round'; g.lineJoin = 'round';
+    const paths = shape.cracks.map((c, i) => { const L = clamp(crk * 1.25 - i * 0.04); const n = c.pts.length - 1; const f = L * n; const pts = [c.pts[0]]; for (let q = 1; q <= n; q++) { if (q <= f) pts.push(c.pts[q]); else { const fr = f - (q - 1); if (fr > 0) { const A = c.pts[q - 1], B = c.pts[q]; pts.push([lerp(A[0], B[0], fr), lerp(A[1], B[1], fr)]); } break; } } return pts; });
+    for (const [w, col, al, comp] of [[0.07, C.gold || QB.gold, 0.55, 'lighter'], [0.03, '#FFF6D8', 0.9, 'lighter'], [0.012, '#3A2206', 0.9, 'source-over']]) { g.globalCompositeOperation = comp; g.globalAlpha = al * clamp(crk * 3); g.strokeStyle = col; g.lineWidth = s * w; for (const pts of paths) { g.beginPath(); pts.forEach(([a, b], j) => (j ? g.lineTo(a * s, b * s) : g.moveTo(a * s, b * s))); g.stroke(); } }
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = clamp((crk - 0.5) * 2) * 0.6; g.drawImage(glowSprite('#FFF3CC'), -s * 0.5, -s * 0.5, s, s);
+  }
+  g.restore();
+}
 export function clearCineCache() { sprites.clear(); }
 
 /* ---------- geometry for one frame ---------- */
@@ -165,12 +227,13 @@ export function cineFrame(p, W, H, t) {
   // camera: zoom about the orbit center, sliding toward the chosen brand as focus rises (log-space zoom feels even)
   const f = clamp(V['camera.focus']); const fit = sel ? (m * (p.camera.fill || 62) / 100) / sel.s : 1; const Z = Math.exp(lerp(0, Math.log(Math.max(0.01, fit)), f)) * V['camera.zoom'];
   const px = lerp(ox, sel ? sel.x : ox, f), py = lerp(oy, sel ? sel.y : oy, f); const sx = lerp(ox, W / 2, f) + V['camera.panX'] * W / 100, sy = lerp(oy, H / 2, f) + V['camera.panY'] * H / 100;
-  const roll = V['camera.roll'] * Math.PI / 180;
-  const cam = { Z, px, py, sx, sy, roll, apply(g) { g.translate(W / 2, H / 2); g.rotate(roll); g.translate(-W / 2, -H / 2); g.translate(sx, sy); g.scale(Z, Z); g.translate(-px, -py); },
-    toScreen(x, y) { let X = (x - px) * Z + sx - W / 2, Y = (y - py) * Z + sy - H / 2; const c = Math.cos(roll), s = Math.sin(roll); return [X * c - Y * s + W / 2, X * s + Y * c + H / 2]; } };
+  const roll = V['camera.roll'] * Math.PI / 180; const shake = clamp(V['fx.impact']) * m * 0.012; const shx = Math.sin(t * 83) * shake, shy = Math.cos(t * 71) * shake;
+  const cam = { Z, px, py, sx, sy, roll, apply(g) { g.translate(W / 2, H / 2); g.rotate(roll); g.translate(-W / 2, -H / 2); g.translate(sx + shx, sy + shy); g.scale(Z, Z); g.translate(-px, -py); },
+    toScreen(x, y) { let X = (x - px) * Z + sx + shx - W / 2, Y = (y - py) * Z + sy + shy - H / 2; const c = Math.cos(roll), s = Math.sin(roll); return [X * c - Y * s + W / 2, X * s + Y * c + H / 2]; } };
   // angular speed (rad/s) for motion blur
   const dt = 1 / 120; const speed = Math.abs(cineAngle(p, t + dt, S, set) - base) / dt;
-  return { S, V, set, items, sel, ox, oy, rx, ry, tileS, M, m, cam, speed, logoSize: M * (p.logoSize || 10) / 100 };
+  const dropV = (evalProp(p, 'logo.dropY', t + 1 / 120, S) - V['logo.dropY']) * 120;
+  return { S, V, set, items, sel, ox, oy, rx, ry, tileS, M, m, cam, speed, H, W, dropV, logoSize: M * (p.logoSize || 10) / 100 };
 }
 
 /* ---------- drawing ---------- */
@@ -179,7 +242,7 @@ function fitFont(g, text, weight, size, fam, maxW, min = 8) { let s = size; g.fo
 function background(g, W, H, p, t, F) {
   const C = p.colors; const bg = C.bg || QB.navy; const par = 1 + (F.cam.Z - 1) * 0.04;
   const gr = g.createRadialGradient(W / 2, H * 0.44, 0, W / 2, H * 0.5, Math.max(W, H) * 0.75 * par); gr.addColorStop(0, mix(bg, '#2B57B8', 0.42)); gr.addColorStop(0.5, bg); gr.addColorStop(1, mix(bg, '#000000', 0.6)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  const intro = clamp(t / 0.6); if (intro < 1) { g.fillStyle = `rgba(0,0,0,${1 - intro})`; g.fillRect(0, 0, W, H); }
+  const intro = clamp(t / 0.3); if (intro < 1) { g.fillStyle = `rgba(0,0,0,${1 - intro})`; g.fillRect(0, 0, W, H); }
 }
 function floor(g, W, H, p, t, F, alpha) {
   if (!p.fx.floor || alpha <= 0) return; const hz = F.oy + F.ry * 1.9; const C = p.colors; g.save(); g.globalAlpha = alpha; g.strokeStyle = hexA(C.blue || QB.blue, 0.14); g.lineWidth = Math.max(1, W / 1000);
@@ -211,7 +274,13 @@ function centerLogo(g, p, F, img, t) {
   const V = F.V; const a = clamp(V['logo.opacity']) * clamp(V['orbit.opacity']); if (a <= 0) return; const C = p.colors;
   const s = F.logoSize * V['logo.scale']; const rot = V['logo.rotY'] * Math.PI / 180; const sx = Math.cos(rot);
   const gl = V['logo.glow'] * (p.fx.bloom ?? 1); if (gl > 0) { g.save(); g.globalAlpha = a * clamp(gl * 0.75); g.globalCompositeOperation = 'lighter'; const G = glowSprite(C.gold || QB.gold); g.drawImage(G, F.ox - s * 1.6, F.oy - s * 1.6, s * 3.2, s * 3.2); g.globalAlpha = a * clamp(gl * 0.4); g.drawImage(glowSprite(C.blue || QB.blue), F.ox - s * 2.4, F.oy - s * 2.4, s * 4.8, s * 4.8); g.restore(); }
-  g.save(); g.globalAlpha = a; g.translate(F.ox, F.oy); g.scale(Math.max(0.02, Math.abs(sx)), 1 + 0.06 * Math.abs(Math.sin(rot)));
+  const ly = F.oy + V['logo.dropY'] * F.H / 100; const vy = F.dropV; const imp = clamp(V['fx.impact']);
+  // falling trail and landing shockwave
+  if (Math.abs(vy) > 0.4) { for (let k = 1; k <= 4; k++) { g.save(); g.globalAlpha = a * 0.13 * (5 - k) / 4; g.translate(F.ox, ly - vy * k * 0.012 * F.H / 100); if (img) contain(g, img, -s / 2, -s / 2, s, s); g.restore(); } }
+  if (imp > 0) { const r = s * (0.6 + (1 - imp) * 2.6); g.save(); g.globalAlpha = imp * 0.8; g.strokeStyle = C.gold || QB.gold; g.lineWidth = s * 0.05 * imp; g.beginPath(); g.ellipse(F.ox, ly + s * 0.42, r, r * 0.22, 0, 0, TAU); g.stroke(); g.globalAlpha = imp * 0.45; g.strokeStyle = '#FFFFFF'; g.lineWidth = s * 0.02; g.beginPath(); g.ellipse(F.ox, ly + s * 0.42, r * 0.8, r * 0.18, 0, 0, TAU); g.stroke();
+    const G = glowSprite('#D9DEEA'); for (let i = 0; i < 14; i++) { const side = i % 2 ? 1 : -1; const d = s * (0.35 + (1 - imp) * (1.1 + hash(i + 5) * 1.4)); const pr = s * (0.18 + (1 - imp) * 0.35 * (0.6 + hash(i))); g.globalAlpha = imp * 0.35; g.drawImage(G, F.ox + side * d * (0.5 + hash(i + 2) * 0.5) - pr, ly + s * 0.38 - (1 - imp) * s * 0.25 * hash(i + 9) - pr * 0.5, pr * 2, pr); } g.restore(); }
+  const squash = imp > 0.6 ? (imp - 0.6) * 0.25 : 0;
+  g.save(); g.globalAlpha = a; g.translate(F.ox, ly + s * squash * 0.5); g.scale(Math.max(0.02, Math.abs(sx)) * (1 + squash), (1 + 0.06 * Math.abs(Math.sin(rot))) * (1 - squash));
   if (img) contain(g, img, -s / 2, -s / 2, s, s);
   else { g.setLineDash([s * 0.08, s * 0.06]); g.lineWidth = s * 0.03; g.strokeStyle = hexA('#FFFFFF', 0.6); g.beginPath(); g.arc(0, 0, s * 0.45, 0, TAU); g.stroke(); g.setLineDash([]); g.lineWidth = s * 0.05; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, s * 0.18); g.lineTo(0, -s * 0.16); g.moveTo(-s * 0.12, -s * 0.04); g.lineTo(0, -s * 0.16); g.lineTo(s * 0.12, -s * 0.04); g.stroke(); }
   // specular sweep while the logo turns
@@ -275,28 +344,34 @@ export function drawCinematic(g, W, H, t, p, imgs) {
     const oA = clamp(V['orbit.opacity']);
     g.save(); F.cam.apply(g);
     floor(g, W, H, p, t, F, oA * 0.9);
-    rings(g, p, F, t, oA, 'back');
+    const showRings = p.fx.rings ?? true; if (showRings) rings(g, p, F, t, oA, 'back');
     const appear = it => { const b = V['orbit.brands']; const a0 = (it.i / F.set.n) * 0.6; const x = clamp((b - a0) / 0.4); return x <= 0 ? 0 : 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2); };
+    const magic = V['fx.magic']; const magicK = it => { const a0 = (it.i / F.set.n) * 0.45; return clamp((magic - a0) / 0.55); }; const crack = clamp(V['fx.crack']);
     const hl = V['fx.highlight']; const dir = p.orbit.direction === 'ccw' ? -1 : 1; const blur = (p.spin.motionBlur ?? 0.8) * clamp((F.speed - 1.5) / 6);
     const drawItem = it => {
       const ap = appear(it); if (ap <= 0) return; const isSel = it === F.sel; if (isSel && sk > 0) return;
       let alpha = lerp(1 - (p.orbit.depthFade ?? 0.45), 1, it.d) * clamp(ap * 1.4); if (!isSel) alpha *= oA * (1 - 0.72 * clamp(hl)); const img = it.b.assetId ? imgs(it.b.assetId) : null;
       const sc = Math.max(0.01, ap);
-      if (blur > 0.02 && alpha > 0.05) for (let k = 4; k >= 1; k--) { const a = it.a - dir * k * 0.035 * blur * Math.min(F.speed, 14) / 4; const ghost = Object.assign({}, it, { x: F.ox + Math.cos(a) * F.rx, y: F.oy + Math.sin(a) * F.ry }); drawTile(g, p, F, ghost, img, alpha * 0.16 * (5 - k) / 4 * blur, 0, 0, 0, sc); }
-      drawTile(g, p, F, it, img, alpha, isSel ? hl : 0, 0, 0, sc);
+      const mk = magicK(it); const boxed = mk >= 0.45; const pop = mk >= 0.45 && mk < 0.75 ? 1 + 0.18 * Math.sin((mk - 0.45) / 0.3 * Math.PI) : mk > 0 && mk < 0.45 ? 1 + 0.08 * Math.sin(mk / 0.45 * Math.PI) : 1;
+      if (isSel && crack > 0) { crackBox(g, p, Object.assign({}, it, { Z: F.cam.Z * (g.__dpr || 1) }), img, crack, t, hl); return; }
+      const face = (gg, o) => { if (boxed) { const ss = o.s; gg.globalAlpha = o.alpha; if (o.glow > 0) { gg.save(); gg.globalCompositeOperation = 'lighter'; gg.globalAlpha = o.alpha * clamp(o.glow) * 0.9; gg.drawImage(glowSprite(C.gold || QB.gold), o.x - ss * 1.25, o.y - ss * 1.25, ss * 2.5, ss * 2.5); gg.restore(); gg.globalAlpha = o.alpha; } gg.drawImage(goldSprite(ss * F.cam.Z * (gg.__dpr || 1)), o.x - ss / 2, o.y - ss / 2, ss, ss); }
+        else drawTile(gg, p, F, Object.assign({}, it, { x: o.x, y: o.y }), img, o.alpha, o.glow, 0, 0, o.s / it.s); };
+      if (blur > 0.02 && alpha > 0.05) for (let k = 4; k >= 1; k--) { const a = it.a - dir * k * 0.035 * blur * Math.min(F.speed, 14) / 4; face(g, { x: F.ox + Math.cos(a) * F.rx, y: F.oy + Math.sin(a) * F.ry, s: it.s * sc, alpha: alpha * 0.16 * (5 - k) / 4 * blur, glow: 0 }); }
+      face(g, { x: it.x, y: it.y, s: it.s * sc * pop, alpha, glow: isSel ? hl : 0 });
+      if (mk > 0 && mk < 1) magicPuff(g, p, it.x, it.y, it.s * sc, mk, it.i + 1);
     };
     const sorted = F.items.slice().sort((a, b) => a.d - b.d);
     sorted.filter(it => it.d < 0.5).forEach(drawItem);
     centerLogo(g, p, F, p.centerAssetId ? imgs(p.centerAssetId) : null, t);
-    rings(g, p, F, t, oA, 'front');
+    if (showRings) rings(g, p, F, t, oA, 'front');
     if (F.sel) rays(g, p, F.sel.x, F.sel.y, F.sel.s, V['fx.rays'] * (1 - sk), t);
     sorted.filter(it => it.d >= 0.5).forEach(drawItem);
     // focus marker under the front slot
-    const mk2 = clamp(V['orbit.brands']) * oA * clamp(V['orbit.ring']); if (mk2 > 0) { const fx = F.ox, fy = F.oy + F.ry + F.tileS * (p.orbit.depthNear ?? 1.15) * 0.78; const s = F.tileS * 0.16; g.globalAlpha = mk2 * 0.95; g.fillStyle = C.gold || QB.gold; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx - s, fy + s * 1.2); g.lineTo(fx + s, fy + s * 1.2); g.closePath(); g.fill(); g.globalAlpha = 1; }
+    const mk2 = clamp(V['orbit.brands']) * oA * (showRings ? clamp(V['orbit.ring']) : clamp(magic * 2)) * (1 - clamp(crack * 4)); if (mk2 > 0) { const fx = F.ox, fy = F.oy + F.ry + F.tileS * (p.orbit.depthNear ?? 1.15) * 0.78; const s = F.tileS * 0.16; g.globalAlpha = mk2 * 0.95; g.fillStyle = C.gold || QB.gold; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx - s, fy + s * 1.2); g.lineTo(fx + s, fy + s * 1.2); g.closePath(); g.fill(); g.globalAlpha = 1; }
     g.restore();
     flare(g, W, H, p, F, V['fx.flare']);
     // brand name under the chosen logo (a caption only; the logo itself is always the uploaded image)
-    if (p.fx.showName && F.sel && F.sel.b.name) { const nk = clamp((hl - 0.3) / 0.7) * (1 - clamp(V['camera.focus'] * 2.5)); if (nk > 0) { const [x, y] = F.cam.toScreen(F.sel.x, F.sel.y + F.sel.s * 0.78); g.save(); g.globalAlpha = nk; const fs = fitFont(g, F.sel.b.name.toUpperCase(), 800, F.m * 0.042, TECH, W * 0.8); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(F.sel.b.name.toUpperCase(), x, y + fs * 0.2); g.restore(); } }
+    if (p.fx.showName && F.sel && F.sel.b.name) { const nk = Math.max(clamp((hl - 0.3) / 0.7) * (1 - clamp(V['camera.focus'] * 2.5)) * (1 - clamp(V['fx.magic'] * 2)), 0); if (nk > 0) { const [x, y] = F.cam.toScreen(F.sel.x, F.sel.y + F.sel.s * 0.78); g.save(); g.globalAlpha = nk; const fs = fitFont(g, F.sel.b.name.toUpperCase(), 800, F.m * 0.042, TECH, W * 0.8); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(F.sel.b.name.toUpperCase(), x, y + fs * 0.2); g.restore(); } }
   }
   if (sk > 0) showcase(g, W, H, p, F, sk, imgs, F.sel && F.sel.b.assetId ? imgs(F.sel.b.assetId) : null, t);
   if (p.fx.vignette) { const v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.max(W, H) * 0.78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)'); g.fillStyle = v; g.fillRect(0, 0, W, H); }
