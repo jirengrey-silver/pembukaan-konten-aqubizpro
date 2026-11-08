@@ -7,7 +7,7 @@ import { clamp } from '../engine/util.js';
 import { removeLayer, duplicateLayer } from './panels.js';
 
 const COLORS = { roulette: '#F2A93B', text: '#1E9BFF', image: '#3DDC97', logo: '#B78BFF', shape: '#93A4C3', audio: '#FF9FB0' };
-const SEGC = ['#F2A93B', '#FFC56B', '#F57C1F', '#FFB04D', '#FFD88F', '#F29A3B', '#FFE3AE'];
+const SEGC = ['#F2A93B', '#FFC56B', '#F57C1F', '#FFD24D', '#FFB04D', '#FFD88F', '#F29A3B', '#FFC56B', '#FFE3AE'];
 let R = null; // current DOM refs
 
 export function buildTimeline(el, api) {

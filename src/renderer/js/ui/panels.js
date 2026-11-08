@@ -217,7 +217,7 @@ function layerProps(l) {
 function rouletteProps(l) {
   const q = l.params; const set = orbitSet(q);
   const refit = () => { const was = Math.abs(p().duration - l.end) < 0.01; l.end = l.start + rouletteDuration(q); if (was || p().duration < l.end) p().duration = l.end; };
-  const S = stageTimes(q); const cols = ['#F2A93B', '#1E9BFF', '#3DDC97', '#F57C1F', '#FFD36B', '#7FC8FF', '#C9D6EA'];
+  const S = stageTimes(q); const cols = ['#F2A93B', '#1E9BFF', '#3DDC97', '#FFD24D', '#F57C1F', '#FFD36B', '#7FC8FF', '#FFB04D', '#C9D6EA'];
   const bar = h('div', { class: 'stagebar', 'aria-hidden': 'true' }, STAGES.map(([k, lab], i) => h('span', { title: `${lab}: ${S[k].d.toFixed(1)} dtk`, style: { width: (S[k].d / S.total * 100) + '%', background: cols[i] } }, S[k].d / S.total > 0.1 ? lab.split(' ')[0] : '')));
   const brandOpts = q.brands.map(b => [b.id, b.name || '(logo)']);
   const chosen = set.list[set.sel];
@@ -226,6 +226,8 @@ function rouletteProps(l) {
     group('Brand terpilih', select('Brand yang menang', selObj, 'v', [['__random', `Acak (sekarang: ${chosen ? chosen.name : '—'})`], ...brandOpts], { parts: '', set: v => { if (v === '__random') { q.selection = 'random'; } else { q.selection = 'manual'; q.selectedId = v; } changed('canvas left props'); } }),
       q.selection === 'random' ? h('button', { class: 'btn sm', onclick: () => { snap(); q.seed = Math.floor(Math.random() * 100000); changed('canvas left props'); } }, icon('shuffle'), 'Acak ulang brand') : null,
       h('p', { class: 'hint' }, 'Unggah logo dan atur daftar brand di panel kiri → Brand.')),
+    group('Kotak misteri', check('Brand berubah jadi kotak kuning bertanda ? sebelum berputar, lalu kotak terpilih terbuka', q, 'mystery', { parts: 'canvas tl props', set: v => { if (v && !(q.hideDur > 0)) q.hideDur = 1.4; if (v && !(q.openDur > 0)) q.openDur = 1.8; if (!v) { q.hideDur = 0; q.openDur = 0; } refit(); } }),
+      h('p', { class: 'hint' }, q.mystery ? 'Urutan: brand tampil → berbalik jadi kotak ? → berputar pelan, cepat, lalu berhenti → kotak terpilih zoom ke kamera dan terbuka menampilkan brand.' : 'Mati: brand tetap terlihat selama berputar, lalu brand terpilih disorot dan di-zoom.')),
     group('Putaran', range('Jumlah putaran', q, 'rotations', { min: 1, max: 12, step: 1, fmt: v => v + '×' }),
       seg('Kecepatan awal', q, 'accel', Object.entries(ACCEL).map(([k, a]) => [k, a.label])), seg('Arah', q, 'direction', [['cw', 'Searah jarum jam'], ['ccw', 'Berlawanan']])),
     group('Durasi tahap (detik)', bar, h('div', { class: 'g2' }, STAGES.map(([k, lab]) => num(lab, q, k, { min: k === 'spinDur' ? 1 : 0, max: 30, step: 0.1, parts: 'canvas tl props', set: () => refit() }))), h('p', { class: 'hint' }, `Total intro ${S.total.toFixed(1)} detik.`)),

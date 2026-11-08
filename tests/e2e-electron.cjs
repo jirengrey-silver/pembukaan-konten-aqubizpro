@@ -28,10 +28,10 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('  o
   const recs = await pg.evaluate(() => window.qbz.export.list()); const rec = recs[0]; ok(rec && fs.existsSync(rec.path), 'file MP4 dibuat: ' + (rec && rec.path) + ` (${((Date.now() - t0) / 1000).toFixed(1)} dtk)`);
   const ff = require('ffmpeg-static'); let info = ''; try { execFileSync(ff, ['-hide_banner', '-i', rec.path]); } catch (e) { info = String(e.stderr); }
   ok(/h264/.test(info) && /720x1280/.test(info) && /24 fps/.test(info), 'MP4 valid: ' + (info.match(/Stream #0:0.*/) || [''])[0].slice(0, 120));
-  ok(/Duration: 00:00:14\.9/.test(info), 'durasi sesuai: ' + (info.match(/Duration: [^,]+/) || [''])[0]);
-  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '9.6', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-zoom.png')]);
-  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '6.5', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-spin.png')]);
-  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '13', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-review.png')]);
+  ok(/Duration: 00:00:18\.1/.test(info), 'durasi sesuai: ' + (info.match(/Duration: [^,]+/) || [''])[0]);
+  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '14.9', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-open.png')]);
+  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '9.5', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-spin.png')]);
+  execFileSync(ff, ['-y', '-loglevel', 'error', '-ss', '13.9', '-i', rec.path, '-frames:v', '1', path.join(OUT, 'e2e-frame-zoom.png')]);
   fs.copyFileSync(rec.path, path.join(OUT, 'e2e-roulette.mp4'));
   await pg.keyboard.press('Escape'); await pg.screenshot({ path: path.join(OUT, 'e2e-editor.png') });
   ok(errs.length === 0, 'tanpa error halaman ' + errs.join(' | '));
